@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Conda
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+        miniconda-version: latest
+        activate-environment: halo-ci
+        environment-file: false
+        auto-activate-base: false
+
+    - name: Install RDKit and dependencies via conda
+      shell: bash -l {0}
+      run: |
+        conda install -c conda-forge rdkit pandas pyarrow pyyaml -y
+
+    - name: Install package
+      shell: bash -l {0}
+      run: |
+        pip install -e .
+
+    - name: Make scripts executable
+      run: |
+        chmod +x scripts/check_ascii.sh
+
+    - name: ASCII compliance check
+      shell: bash -l {0}
+      run: |
+        ./scripts/check_ascii.sh
+
+    - name: Run unit tests
+      shell: bash -l {0}
+      run: |
+        python -m unittest discover -v
+
+    - name: Run schema tests
+      shell: bash -l {0}
+      run: |
+        python -m unittest tests.test_schema_records -v
+
+  integration:
+    runs-on: ubuntu-latest
+    needs: test
+    continue-on-error: true
+    if: github.event_name == 'pull_request' || contains(github.event.head_commit.message, '[run-integration]')
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Conda  
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        python-version: "3.10"
+        miniconda-version: latest
+        activate-environment: halo-ci
+        environment-file: false
+        auto-activate-base: false
+
+    - name: Install dependencies
+      shell: bash -l {0}
+      run: |
+        conda install -c conda-forge rdkit pandas pyarrow pyyaml -y
+        pip install -e .
+
+    - name: Create test input files
+      shell: bash -l {0}
+      run: |
+        mkdir -p data/input
+        echo -e "c1ccc(O)cc1\tphenol" > data/input/rule_probes.smi
+        echo -e "CCN\tethylamine" >> data/input/rule_probes.smi
+        echo -e "c1ccc(C(=O)O)cc1\tbenzoic_acid" >> data/input/rule_probes.smi
+
+    - name: Run integration tests
+      shell: bash -l {0}
+      run: |
+        HALO_INTEGRATION=1 python -m unittest tests.test_subset_consistency -v

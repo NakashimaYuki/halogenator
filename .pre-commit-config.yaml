@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: ascii-check
+        name: ascii-check
+        entry: scripts/check_ascii.sh
+        language: system
+        pass_filenames: false

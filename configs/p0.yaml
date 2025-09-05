@@ -1,0 +1,17 @@
+project: halogenator
+task: P0_k1_only
+halogens: [F, Cl, Br, I]
+rules: [R1, R2, R3, R4, R5]
+standardize:
+  do_tautomer: false
+qc:
+  pains: true
+  sanitize_strict: true
+dedupe:
+  method: inchikey
+io:
+  names_file: data/input/flavonoids_p0_names.txt
+  smiles_file: data/output/p0/parents.smi
+  products_sdf: data/output/p0/products_k1.sdf
+  products_table: data/output/p0/products_k1.parquet
+  summary_csv: data/output/p0/summary_k1.csv
