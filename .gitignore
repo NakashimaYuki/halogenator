@@ -134,3 +134,4 @@ data/output/
 **/products_k1_all.sdf
 **/products_k1_all.parquet
 *.log
+.claude/
