@@ -90,3 +90,54 @@ jobs:
       shell: bash -l {0}
       run: |
         HALO_INTEGRATION=1 python -m unittest tests.test_subset_consistency -v
+
+  p0-demo:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Conda
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: "3.10"
+          miniconda-version: latest
+          activate-environment: halo-ci
+          environment-file: false
+          auto-activate-base: false
+
+      - name: Install RDKit & dependencies
+        shell: bash -l {0}
+        run: |
+          conda install -c conda-forge rdkit pandas pyarrow pyyaml -y
+          pip install -e .
+
+      - name: Prepare 10-flavonoids baseline
+        shell: bash -l {0}
+        run: |
+          mkdir -p data/output/p0
+          cp examples/input/parents_flavonoids_10.smi data/output/p0/parents.smi
+          echo "Using 10-flavonoids baseline:"
+          wc -l data/output/p0/parents.smi
+          head -3 data/output/p0/parents.smi
+
+      - name: Run P0 E2E demo (k1 + report)
+        shell: bash -l {0}
+        run: |
+          mkdir -p artifacts
+          echo "=== Running k1 enumeration ==="
+          python -m halogenator.cli k1 -c configs/p0.yaml --subset flavonoids --outdir artifacts
+          echo "=== Running report generation ==="
+          python -m halogenator.cli report -c configs/p0.yaml --subset flavonoids --outdir artifacts
+          echo "=== Generated artifacts ==="
+          ls -la artifacts/
+          echo "=== Summary preview ==="
+          head -10 artifacts/summary_k1.csv
+
+      - name: Upload P0 demo artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-flavonoids-10-baseline-report
+          path: |
+            artifacts/summary_k1.csv
+            artifacts/summary_k1_pivot.csv
