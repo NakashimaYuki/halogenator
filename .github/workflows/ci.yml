@@ -21,9 +21,9 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
         miniconda-version: latest
-        activate-environment: halo-ci
-        environment-file: false
-        auto-activate-base: false
+        auto-activate-base: true
+        use-mamba: true
+        channels: conda-forge
 
     - name: Install RDKit and dependencies via conda
       shell: bash -l {0}
@@ -68,9 +68,9 @@ jobs:
       with:
         python-version: "3.10"
         miniconda-version: latest
-        activate-environment: halo-ci
-        environment-file: false
-        auto-activate-base: false
+        auto-activate-base: true
+        use-mamba: true
+        channels: conda-forge
 
     - name: Install dependencies
       shell: bash -l {0}
@@ -102,15 +102,20 @@ jobs:
         with:
           python-version: "3.10"
           miniconda-version: latest
-          activate-environment: halo-ci
-          environment-file: false
-          auto-activate-base: false
+          auto-activate-base: true
+          use-mamba: true
+          channels: conda-forge
 
       - name: Install RDKit & dependencies
         shell: bash -l {0}
         run: |
           conda install -c conda-forge rdkit pandas pyarrow pyyaml -y
           pip install -e .
+
+      - name: Validate 10-flavonoids baseline
+        shell: bash -l {0}
+        run: |
+          python scripts/validate_baseline.py
 
       - name: Prepare 10-flavonoids baseline
         shell: bash -l {0}
