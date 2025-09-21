@@ -42,7 +42,8 @@ OPTIONAL_PRODUCT_COLUMNS: Set[str] = {
     'site_index',        # Site information
     'sym_class',         # Symmetry class
     'ring_tag',          # Ring tag information
-    'pains_flags'        # PAINS filter results
+    'pains_flags',       # PAINS filter results
+    'rule_family'        # Rule family for grouping (R2a/R2b -> R2)
 }
 
 # Backward compatibility alias

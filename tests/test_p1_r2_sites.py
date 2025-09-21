@@ -61,17 +61,15 @@ class TestP1R2Sites(unittest.TestCase):
             k_max=1,
             halogens=('F',),
             constraints={'per_ring_quota': 10, 'min_graph_distance': 1, 'max_per_halogen': None},
-            pruning_cfg={'enable_symmetry_fold': True, 'enable_state_sig': False},
-            sugar_cfg={'mode': 'off'},  # Disable sugar masking for R2 testing
-            rules_cfg={'R2': {'sp2_CH_in_C_ring': True, 'sp3_CH2_flavanone': True}}  # Enable R2a/R2b
+            pruning_cfg={'enable_symmetry_fold': True, 'enable_state_sig': False}
         )
         
         # Hydroxylated THP - 6-membered ring with oxygen
         hydroxy_thp_smiles = "OC1CCCCO1"
         products = list(enumerate_products(hydroxy_thp_smiles, cfg))
         
-        # Should produce R2 products for the carbon ring sites
-        r2_products = [p for p in products if p['rule'] == 'R2']
+        # Should produce R2 products for the carbon ring sites (R2a/R2b when PR2 enabled by default)
+        r2_products = [p for p in products if p['rule'] in ['R2', 'R2a', 'R2b']]
         self.assertGreater(len(r2_products), 0, "Should produce R2 products for ring carbons with O neighbors")
         
     def test_r2_vs_r1_distinction(self):
@@ -80,9 +78,7 @@ class TestP1R2Sites(unittest.TestCase):
             k_max=1,
             halogens=('F',),
             constraints={'per_ring_quota': 10, 'min_graph_distance': 1, 'max_per_halogen': None},
-            pruning_cfg={'enable_symmetry_fold': False, 'enable_state_sig': False},
-            sugar_cfg={'mode': 'off'},  # Disable sugar masking for R2 testing
-            rules_cfg={'R2': {'sp2_CH_in_C_ring': True, 'sp3_CH2_flavanone': True}}  # Enable R2a/R2b
+            pruning_cfg={'enable_symmetry_fold': False, 'enable_state_sig': False}
         )
 
         # Use symmetry folding to ensure R1 products are generated
@@ -90,9 +86,7 @@ class TestP1R2Sites(unittest.TestCase):
             k_max=1,
             halogens=('F',),
             constraints={'per_ring_quota': 10, 'min_graph_distance': 1, 'max_per_halogen': None},
-            pruning_cfg={'enable_symmetry_fold': True, 'enable_state_sig': False},
-            sugar_cfg={'mode': 'off'},  # Disable sugar masking for R2 testing
-            rules_cfg={'R2': {'sp2_CH_in_C_ring': True, 'sp3_CH2_flavanone': True}}  # Enable R2a/R2b
+            pruning_cfg={'enable_symmetry_fold': True, 'enable_state_sig': False}
         )
         
         # Benzene should have R1 (aromatic CH) but no R2 (non-aromatic ring C)
@@ -110,7 +104,7 @@ class TestP1R2Sites(unittest.TestCase):
         hydroxy_thp_products = list(enumerate_products(hydroxy_thp_smiles, cfg_folded))
         
         hydroxy_thp_r1 = [p for p in hydroxy_thp_products if p['rule'] == 'R1']
-        hydroxy_thp_r2 = [p for p in hydroxy_thp_products if p['rule'] == 'R2']
+        hydroxy_thp_r2 = [p for p in hydroxy_thp_products if p['rule'] in ['R2', 'R2a', 'R2b']]
         
         self.assertEqual(len(hydroxy_thp_r1), 0, "Hydroxylated THP should not have R1 products")
         self.assertGreater(len(hydroxy_thp_r2), 0, "Hydroxylated THP should have R2 products")

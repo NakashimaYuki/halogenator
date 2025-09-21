@@ -18,7 +18,7 @@ repos:
         
       - id: schema-validation
         name: Schema Validation Check
-        entry: python -c "from src.halogenator.schema import empty_qa_paths, ensure_full_schema_qa_paths; qa = empty_qa_paths(); ensure_full_schema_qa_paths(qa); print('Schema validation OK')"
+        entry: python -c "from src.halogenator.schema import validate_products_schema, get_all_known_columns, validate_products_records, empty_qa_paths; validate_products_schema(get_all_known_columns()); rec = {'inchikey':'TEST-KEY','smiles':'CCF','product_smiles':'CCF','parent_inchikey':'PARENT-KEY','parent_smiles':'CC','parent_type':'manual','rule':'R1','rule_family':'R1','halogen':'F','k':1,'depth':1,'k_ops':1,'constraints_ok':True}; validate_products_records([rec]); qa = empty_qa_paths(); assert len(qa) > 0; print('Schema validation OK')"
         language: system
         pass_filenames: false
         files: '^src/halogenator/schema\.py$'

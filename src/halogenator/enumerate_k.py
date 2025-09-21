@@ -693,8 +693,8 @@ class EnumConfig:
         self.symmetry_cfg = symmetry_cfg or {'compute_on_masked_subgraph': True}
         self.rules_cfg = rules_cfg or {
             'R2': {
-                'sp2_CH_in_C_ring': False,      # R2a: Enable sp2 CH sites in C-ring
-                'sp3_CH2_flavanone': False,     # R2b: Enable sp3 CH2 sites in flavanone C-ring
+                'sp2_CH_in_C_ring': True,       # R2a: Enable sp2 CH sites in C-ring
+                'sp3_CH2_flavanone': True,      # R2b: Enable sp3 CH2 sites in flavanone C-ring
                 'allowed_halogens': ['F', 'Cl', 'Br', 'I']  # Halogens allowed for R2 rules
             },
             'R6_methyl': {
@@ -2043,17 +2043,19 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
     # ========================================================
 
     # T2-5: Initialize R2 halogen counters
-    by_rule_halogen_counts = {
-        "R2a": {halogen: 0 for halogen in cfg.halogens},
-        "R2b": {halogen: 0 for halogen in cfg.halogens}
-    }
-
     # Get R2 allowed halogens once (used by both R2a and R2b)
-    r2_allowed_halogens = cfg.rules_cfg.get('R2', {}).get('allowed_halogens', cfg.halogens)
+    # Intersect with main config halogens to respect user choice
+    r2_allowed_halogens_raw = cfg.rules_cfg.get('R2', {}).get('allowed_halogens', cfg.halogens)
+    r2_allowed_halogens = [h for h in r2_allowed_halogens_raw if h in cfg.halogens]
+
+    by_rule_halogen_counts = {
+        "R2a": {halogen: 0 for halogen in r2_allowed_halogens},
+        "R2b": {halogen: 0 for halogen in r2_allowed_halogens}
+    }
 
     # R2a: sp2 CH sites in C-ring (controlled by rules_cfg.R2.sp2_CH_in_C_ring)
     r2a_sites = []
-    if cfg.rules_cfg.get('R2', {}).get('sp2_CH_in_C_ring', False):
+    if cfg.rules_cfg.get('R2', {}).get('sp2_CH_in_C_ring', True):
         r2a_sites = _sites_with_mask_drop(
             c_ring_sp2_CH_sites, mol=mol, sugar_mask=sugar_mask, qa_bus=qa_bus
         )
@@ -2070,7 +2072,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
             for halogen in r2_allowed_halogens:
                 attempt_qa = {}
                 site_result = _apply_single_site(
-                    mol, site, halogen, 'R2', ranks, ring_label_map,
+                    mol, site, halogen, 'R2a', ranks, ring_label_map,
                     history, depth, cfg, seen_global, budget_payload, qa_bus,
                     attempt=attempt_qa
                 )
@@ -2088,7 +2090,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
 
     # R2b: sp3 CH2 sites in flavanone C-ring (controlled by rules_cfg.R2.sp3_CH2_flavanone)
     r2b_sites = []
-    if cfg.rules_cfg.get('R2', {}).get('sp3_CH2_flavanone', False):
+    if cfg.rules_cfg.get('R2', {}).get('sp3_CH2_flavanone', True):
         r2b_sites = _sites_with_mask_drop(
             c_ring_sp3_CH2_flavanone_sites, mol=mol, sugar_mask=sugar_mask, qa_bus=qa_bus, sugar_cfg=cfg.sugar_cfg
         )
@@ -2106,7 +2108,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
             for halogen in r2_allowed_halogens:
                 attempt_qa = {}
                 site_result = _apply_single_site(
-                    mol, site, halogen, 'R2', ranks, ring_label_map,
+                    mol, site, halogen, 'R2b', ranks, ring_label_map,
                     history, depth, cfg, seen_global, budget_payload, qa_bus,
                     attempt=attempt_qa
                 )
@@ -2321,6 +2323,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                     'smiles': Chem.MolToSmiles(new_mol),
                     'inchikey': product_inchikey,
                     'rule': 'R6',
+                    'rule_family': 'R6',  # Rule family for grouping
                     'halogen': X,
                     'k': budget_tmp.k_atoms,
                     'k_ops': budget_tmp.k_ops,
@@ -2499,6 +2502,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                         'smiles': Chem.MolToSmiles(new_mol),
                         'inchikey': product_inchikey,
                         'rule': 'R6',
+                        'rule_family': 'R6',  # Rule family for grouping
                         'halogen': X,
                         'macro_label': label,
                         'k': budget_tmp.k_atoms,
@@ -2725,6 +2729,9 @@ def _make_record(product_mol, parent_mol, depth: int, rule: str,
     # Use sanitized parent inchikey for consistency
     parent_key = to_inchikey_sanitized(parent_mol) or to_inchikey(parent_mol)
 
+    # Determine rule family for grouping (R2a/R2b both belong to R2 family)
+    rule_family = 'R2' if rule in ('R2a', 'R2b') else rule
+
     record = {
         'inchikey': inchikey or 'UNKNOWN',
         'smiles': smiles_prod,
@@ -2732,6 +2739,7 @@ def _make_record(product_mol, parent_mol, depth: int, rule: str,
         'parent_smiles': smiles_parent,
         'k': depth,
         'rule': rule,  # Last rule applied (for compatibility)
+        'rule_family': rule_family,  # Rule family for grouping
         'halogen': halogen,  # Last halogen applied (for compatibility)
         'substitutions': history[:],  # Complete history
         'constraints_ok': constraints_ok,
