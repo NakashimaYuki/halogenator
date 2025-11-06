@@ -2,11 +2,10 @@
 """Deduplication utilities."""
 
 from typing import List
-from rdkit import Chem
 from .standardize import to_inchikey
 
 
-def seen_key(mol: Chem.Mol) -> str:
+def seen_key(mol) -> str:
     """Get deduplication key for molecule (InChIKey preferred, SMILES fallback)."""
     if mol is None:
         return "NONE"
@@ -14,7 +13,7 @@ def seen_key(mol: Chem.Mol) -> str:
     return to_inchikey(mol)
 
 
-def dedupe_mols(mols: List[Chem.Mol]) -> List[Chem.Mol]:
+def dedupe_mols(mols: List):
     """Deduplicate molecules using InChIKey/SMILES keys."""
     if not mols:
         return []

@@ -1,0 +1,45 @@
+# PR2 Small Batch Strict Configuration
+# Strict beta-to-carbonyl semantics (same-ring distance=2)
+
+halogens:
+  - F
+  - Cl
+
+rules:
+  - R1
+  - R2
+  - R3
+  - R4
+  - R5
+
+k_max: 2
+
+rules_cfg:
+  R2:
+    sp2_CH_in_C_ring: true
+    sp3_CH2_flavanone: true
+    allow_alpha_as_beta: false  # Strict beta (same-ring distance=2)
+
+constraints:
+  per_ring_quota: 2
+  min_graph_distance: 2
+  max_per_halogen: null
+
+standardize:
+  do_tautomer: false
+
+qc:
+  sanitize_strict: true
+  pains: true
+
+pruning:
+  enable_symmetry_fold: true
+  enable_state_sig: false
+
+sugar_cfg:
+  mode: "heuristic"
+
+io:
+  smiles_file: "out/etcm2000/parents/parents_pick.smi"
+  products_table: "out/etcm2000/pick_k2_strict/products_k2.parquet"
+  summary_csv: "out/etcm2000/pick_k2_strict/summary_k2.csv"

@@ -6,7 +6,14 @@ repos:
         entry: python scripts/check_ascii_portable.py
         language: system
         pass_filenames: false
-        stages: [commit, push]
+        stages: [pre-commit, pre-push]
+
+      - id: ascii-root-files
+        name: ASCII Check Root Files
+        entry: python scripts/check_ascii_root_files.py
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
         
       - id: python-imports
         name: Python Import Check
@@ -14,12 +21,12 @@ repos:
         language: system
         pass_filenames: false
         files: '^src/halogenator/.*\.py$'
-        stages: [commit]
+        stages: [pre-commit]
         
       - id: schema-validation
         name: Schema Validation Check
-        entry: python -c "from src.halogenator.schema import validate_products_schema, get_all_known_columns, validate_products_records, empty_qa_paths; validate_products_schema(get_all_known_columns()); rec = {'inchikey':'TEST-KEY','smiles':'CCF','product_smiles':'CCF','parent_inchikey':'PARENT-KEY','parent_smiles':'CC','parent_type':'manual','rule':'R1','rule_family':'R1','halogen':'F','k':1,'depth':1,'k_ops':1,'constraints_ok':True}; validate_products_records([rec]); qa = empty_qa_paths(); assert len(qa) > 0; print('Schema validation OK')"
+        entry: python scripts/precommit_schema_check.py
         language: system
         pass_filenames: false
         files: '^src/halogenator/schema\.py$'
-        stages: [commit]
+        stages: [pre-commit]

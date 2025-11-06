@@ -43,7 +43,13 @@ OPTIONAL_PRODUCT_COLUMNS: Set[str] = {
     'sym_class',         # Symmetry class
     'ring_tag',          # Ring tag information
     'pains_flags',       # PAINS filter results
-    'rule_family'        # Rule family for grouping (R2a/R2b -> R2)
+    'rule_family',       # Rule family for grouping (R2a/R2b -> R2)
+    'sub_rule',          # Sub-rule identifier (R2a, R2b for family R2)
+    'macro_label',       # Macro substitution label (CF3, CCl3, etc.)
+    'k_ops',             # Operation count (for dual-metric tracking)
+    'k_atoms',           # Atom count (for dual-metric tracking)
+    'budget_mode',       # Budget mode (ops/atoms)
+    'detection'          # Detection method (strict, fallback for R2b)
 }
 
 # Backward compatibility alias
@@ -54,6 +60,51 @@ ALL_RULES: Final[Tuple[str, ...]] = ('R1', 'R2', 'R3', 'R4', 'R5', 'R6')
 
 # Halogen constants for centralized configuration management
 ALL_HALOGENS: Final[Tuple[str, ...]] = ('F', 'Cl', 'Br', 'I')
+
+
+def compute_rule_family(rule: str) -> str:
+    """
+    Compute rule family from rule identifier.
+
+    Maps sub-rules to their parent family:
+    - R2a, R2b -> R2
+    - R6_methyl -> R6
+    - R1, R3, R4, R5, R6 -> unchanged
+
+    Args:
+        rule: Rule identifier (e.g., 'R1', 'R2a', 'R2b', 'R6_methyl')
+
+    Returns:
+        Rule family identifier
+    """
+    if rule in ('R2a', 'R2b'):
+        return 'R2'
+    if rule in ('R6_methyl',):
+        return 'R6'
+    # For other rules (R1, R3, R4, R5, R6), return as-is
+    return rule
+
+
+# Sugar audit field constants for centralized schema definition
+CORE_SUGAR_AUDIT_KEYS: Final[Tuple[str, ...]] = (
+    'path',                           # Path taken (main/fallback)
+    'accepted',                       # Whether sugar was accepted
+    'accepted_via_score',             # Whether accepted via main scoring path
+    'ring_size',                      # Size of best sugar ring found
+    'exocyclic_O_count_single_bond',  # Count of exocyclic single-bond oxygens
+    'has_cglyco_evidence',            # Whether C-glycoside evidence found
+    'ring_score'                      # Score of best ring (main path only)
+)
+
+FALLBACK_SUGAR_AUDIT_KEYS: Final[Tuple[str, ...]] = (
+    'degraded_reason',                # List of reasons for fallback
+    'fallback_ring_count',            # Count of fallback rings found
+    'cglyco_candidates_count',        # Count of C-glycoside candidates
+    'cglyco_audit'                    # C-glycoside audit details
+)
+
+# Complete set of sugar audit keys
+SUGAR_AUDIT_KEYS: Final[Tuple[str, ...]] = CORE_SUGAR_AUDIT_KEYS + FALLBACK_SUGAR_AUDIT_KEYS
 
 # Overview counters that appear only in total section (not distributed to granular dimensions)
 OVERVIEW_COUNTERS: Final[Tuple[str, ...]] = ('attempts', 'products', 'dedup_hits_statesig', 'dedup_hits_inchi')

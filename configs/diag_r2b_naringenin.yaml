@@ -1,0 +1,28 @@
+# R2b positive sample test with naringenin
+# Purpose: Verify R2b can identify C3-CH2 in flavanone with allow_alpha_as_beta=true
+
+rules: [R2]
+k_max: 1
+halogens: [F]
+
+rules_cfg:
+  R2:
+    sp3_CH2_flavanone: true      # Enable R2b (flavanone CH2 halogenation)
+    sp2_CH_in_C_ring: false     # Disable R2a
+    allow_alpha_as_beta: true   # CRITICAL: allow C3-CH2 (alpha=1) to be treated as beta
+    allowed_halogens: [F]
+
+# Input file
+io:
+  smiles_file: "test_naringenin.smi"
+
+# Minimal settings to reduce variables
+constraints:
+  per_ring_quota: null
+  min_graph_distance: null
+pruning:
+  enable_symmetry_fold: false
+qc:
+  enable_rdkit_qc: false
+sugar_cfg:
+  mode: heuristic

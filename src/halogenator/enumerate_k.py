@@ -48,6 +48,132 @@ from .budget import BudgetState
 from .sites_methyl import enumerate_methyl_sites
 from .rules_methyl import apply_methyl_step, apply_methyl_macro, validate_methyl_halogen
 
+
+# ==============================================================================
+# Step Construction Factory
+# ==============================================================================
+
+def make_history_step(
+    rule: str,
+    site: int,
+    halogen: str,
+    atom_cost: int,
+    depth: int,
+    sym: Optional[int] = None,
+    ring_tag: Optional[str] = None,
+    step_type: Optional[str] = None,
+    macro_label: Optional[str] = None,
+    k_ops: Optional[int] = None,
+    k_atoms: Optional[int] = None,
+    budget_mode: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Unified factory for constructing history step records.
+
+    This function provides a single, consistent way to create history items
+    across all rules (R1, R2, R3, R6_methyl), ensuring all required fields
+    are present and avoiding field omission bugs.
+
+    Required Parameters:
+        rule: Rule identifier (e.g., 'R1', 'R2a', 'R2b', 'R3', 'R6_methyl')
+        site: Atom index where substitution occurs
+        halogen: Halogen symbol ('F', 'Cl', 'Br', 'I')
+        atom_cost: Number of halogen atoms added (1 for single, 3 for CF3/CCl3)
+        depth: Current BFS depth + 1
+
+    Optional Parameters (R1/R2/R3):
+        sym: Symmetry class from canonical ranking (int or None)
+        ring_tag: Ring label (e.g., 'A', 'B', 'C') for aromatic sites
+
+    Optional Parameters (R6_methyl):
+        step_type: 'step' or 'macro' for methyl halogenation mode
+        macro_label: 'CF3' or 'CCl3' for macro mode
+
+    Legacy Parameters (deprecated, kept for backward compatibility):
+        k_ops: Number of operations (should be derived from history length)
+        k_atoms: Number of atoms (should be derived from sum of atom_costs)
+        budget_mode: 'ops' or 'atoms' (budget tracking mode)
+
+    Returns:
+        Dictionary with all required fields for a history step.
+
+    Example Usage:
+        # R1/R2/R3 aromatic site
+        step = make_history_step(
+            rule='R1',
+            site=5,
+            halogen='F',
+            atom_cost=1,
+            depth=1,
+            sym=2,
+            ring_tag='A'
+        )
+
+        # R6_methyl step mode
+        step = make_history_step(
+            rule='R6_methyl',
+            site=10,
+            halogen='Cl',
+            atom_cost=1,
+            depth=2,
+            step_type='step',
+            k_ops=2,
+            k_atoms=2,
+            budget_mode='ops'
+        )
+
+        # R6_methyl macro mode
+        step = make_history_step(
+            rule='R6_methyl',
+            site=10,
+            halogen='F',
+            atom_cost=3,
+            depth=2,
+            step_type='macro',
+            macro_label='CF3',
+            k_ops=2,
+            k_atoms=5,
+            budget_mode='atoms'
+        )
+    """
+    step = {
+        'rule': rule,
+        'site': site,
+        'halogen': halogen,
+        'atom_cost': atom_cost,
+        'depth': depth
+    }
+
+    # Add optional R1/R2/R3 fields
+    if sym is not None:
+        step['sym'] = sym
+    else:
+        step['sym'] = None  # Explicit None for consistency
+
+    if ring_tag is not None:
+        step['ring_tag'] = ring_tag
+    else:
+        step['ring_tag'] = ''  # Empty string as default (historical)
+
+    # Add optional R6_methyl fields
+    if step_type is not None:
+        step['type'] = step_type
+
+    if macro_label is not None:
+        step['label'] = macro_label
+
+    # Add legacy fields if provided (for backward compatibility)
+    if k_ops is not None:
+        step['k_ops'] = k_ops
+
+    if k_atoms is not None:
+        step['k_atoms'] = k_atoms
+
+    if budget_mode is not None:
+        step['budget_mode'] = budget_mode
+
+    return step
+
 # Isotope tag used for internal site tracking (no chemical significance)
 ISOTOPE_TAG = 109
 
@@ -684,8 +810,21 @@ class EnumConfig:
                  random_seed: Optional[int] = None):
         self.k_max = k_max
         self.halogens = halogens
-        self.rules = rules or ('R1', 'R2', 'R3', 'R4', 'R5', 'R6')
-        self.constraints = constraints or {'per_ring_quota': 2, 'min_graph_distance': 2, 'max_per_halogen': None}
+
+        # Rule alias mapping for backward compatibility (R6 -> R6_methyl)
+        if rules:
+            rules_mapped = []
+            for r in rules:
+                if r == 'R6':
+                    rules_mapped.append('R6_methyl')
+                    LOG.debug("Mapped legacy rule 'R6' to 'R6_methyl' for compatibility")
+                else:
+                    rules_mapped.append(r)
+            self.rules = tuple(rules_mapped)
+        else:
+            self.rules = ('R1', 'R2', 'R3', 'R4', 'R5', 'R6_methyl')
+
+        self.constraints = constraints or {'enable': True, 'per_ring_quota': 2, 'min_graph_distance': 2, 'max_per_halogen': None}
         self.std_cfg = std_cfg or {'do_tautomer': False}
         self.qc_cfg = qc_cfg or {'sanitize_strict': True, 'pains': True, 'tautomer_canonicalize': False}
         self.pruning_cfg = pruning_cfg or {'enable_symmetry_fold': True, 'enable_state_sig': False}
@@ -695,12 +834,14 @@ class EnumConfig:
             'R2': {
                 'sp2_CH_in_C_ring': True,       # R2a: Enable sp2 CH sites in C-ring
                 'sp3_CH2_flavanone': True,      # R2b: Enable sp3 CH2 sites in flavanone C-ring
+                'allow_alpha_as_beta': False,   # Allow alpha=1 positions as beta in flavanone
                 'allowed_halogens': ['F', 'Cl', 'Br', 'I']  # Halogens allowed for R2 rules
             },
             'R6_methyl': {
                 'enable': False,                # R6: Enable methyl halogenation rules
                 'allowed': ['F', 'Cl'],         # Halogens allowed for R6 rules (only F, Cl supported)
                 'allow_on_methoxy': False,      # Allow halogenation of O-CH3 groups
+                'allow_allylic_methyl': False,  # Allow halogenation of allylic/vinylic methyls
                 'macro': {
                     'enable': False,            # Enable macro substitution (CF3, CCl3)
                     'labels': ['CF3', 'CCl3']   # Supported macro labels
@@ -718,12 +859,20 @@ class EnumConfig:
                 del self.rules_cfg['engine']
             else:
                 # Default engine configuration
-                self.engine_cfg = {'budget_mode': 'ops', 'emit_legacy_keys': False, 'dedup_stage': 'pre', 'dedup_policy': 'auto'}
+                self.engine_cfg = {
+                    'budget_mode': 'ops',
+                    'emit_legacy_keys': False,
+                    'dedup_stage': 'pre',
+                    'dedup_policy': 'auto',
+                    'enable_inchi_dedup': True  # Master switch for InChI deduplication (set False for raw mode)
+                }
         else:
             self.engine_cfg = engine_cfg
-            # Ensure dedup_policy has a default value
+            # Ensure default values for optional engine settings
             if 'dedup_policy' not in self.engine_cfg:
                 self.engine_cfg['dedup_policy'] = 'auto'
+            if 'enable_inchi_dedup' not in self.engine_cfg:
+                self.engine_cfg['enable_inchi_dedup'] = True
 
         self.random_seed = random_seed
 
@@ -896,8 +1045,9 @@ def enumerate_products(parent_smi: str, cfg: EnumConfig,
     seen_keys = {parent_key}
 
     # Compute sugar mask for this parent molecule
-    sugar_mask, mask_degraded, status_metadata = get_sugar_mask_with_full_status(parent_mol, mode=cfg.sugar_cfg.get('mode', 'heuristic'), sugar_cfg=cfg.sugar_cfg)
-    LOG.debug(f"Sugar mask computed: {len(sugar_mask)} atoms masked")
+    sugar_mode = cfg.sugar_cfg.get('mode', 'heuristic')
+    sugar_mask, mask_degraded, status_metadata = get_sugar_mask_with_full_status(parent_mol, mode=sugar_mode, sugar_cfg=cfg.sugar_cfg)
+    LOG.debug(f"Sugar mask computed: {len(sugar_mask)} atoms masked, mode={sugar_mode}")
 
     # Sample-level QA event bus (not in product objects, at sample level)
     qa_bus = {
@@ -916,6 +1066,10 @@ def enumerate_products(parent_smi: str, cfg: EnumConfig,
     if return_qa_stats and aggregator is None:
         aggregator = QAAggregator(debug_consistency=cfg.engine_cfg.get('qa_debug_consistency', False))
 
+    # Emit QA event if sugar masking is disabled (raw mode) - k>=2 entry point
+    if aggregator is not None and sugar_mode == 'off':
+        aggregator.record('sugar_mask_mode_off', amount=1)
+
     # Record sugar mask degradation using unified counting
     if mask_degraded:
         qa_stats.qa_paths['sugar_mask_degraded'] = qa_stats.qa_paths.get('sugar_mask_degraded', 0) + 1
@@ -930,19 +1084,34 @@ def enumerate_products(parent_smi: str, cfg: EnumConfig,
         'k_ops': 0, 'k_atoms': 0,
         'site_tokens': {}, 'site_state': {}
     }
-    frontier = deque([(parent_mol, 0, [], sugar_mask, initial_budget_payload)])
+    # BFS queue format: (mol, depth, history, current_mask, budget_payload, root_parent_mol, root_parent_inchikey, root_parent_smiles)
+    root_parent_inchikey = parent_key
+    root_parent_smiles = parent_smiles
+    frontier = deque([(parent_mol, 0, [], sugar_mask, initial_budget_payload, parent_mol, root_parent_inchikey, root_parent_smiles)])
     
     # State signature tracking for pruning (optional)
     state_signatures = set() if cfg.pruning_cfg.get('enable_state_sig', False) else None
     
     while frontier:
-        if len(frontier[0]) == 4:
+        frontier_item = frontier.popleft()
+        if len(frontier_item) == 4:
             # Legacy format: (mol, depth, history, current_mask)
-            mol, depth, history, current_mask = frontier.popleft()
+            mol, depth, history, current_mask = frontier_item
             budget_payload = initial_budget_payload.copy()
+            # For legacy format, assume same mol as root parent at depth 0
+            root_parent_mol = mol if depth == 0 else None
+            root_parent_inchikey = None
+            root_parent_smiles = None
+        elif len(frontier_item) == 5:
+            # Format with budget: (mol, depth, history, current_mask, budget_payload)
+            mol, depth, history, current_mask, budget_payload = frontier_item
+            # For this format, assume same mol as root parent at depth 0
+            root_parent_mol = mol if depth == 0 else None
+            root_parent_inchikey = None
+            root_parent_smiles = None
         else:
-            # New format: (mol, depth, history, current_mask, budget_payload)
-            mol, depth, history, current_mask, budget_payload = frontier.popleft()
+            # New format with root parent: (mol, depth, history, current_mask, budget_payload, root_parent_mol, root_parent_inchikey, root_parent_smiles)
+            mol, depth, history, current_mask, budget_payload, root_parent_mol, root_parent_inchikey, root_parent_smiles = frontier_item
 
         # Stop if reached maximum depth
         if depth >= cfg.k_max:
@@ -950,7 +1119,8 @@ def enumerate_products(parent_smi: str, cfg: EnumConfig,
 
         # Expand current molecule
         next_frontier, product_records, layer_qa_stats = _layer_expand(
-            mol, depth, history, cfg, seen_keys, state_signatures, aggregator, current_mask, qa_bus, budget_payload
+            mol, depth, history, cfg, seen_keys, state_signatures, aggregator, current_mask, qa_bus, budget_payload,
+            root_parent_mol, root_parent_inchikey, root_parent_smiles
         )
         
         # Merge QA statistics from this layer
@@ -1195,7 +1365,8 @@ def enumerate_with_stats(parent_smi: str, cfg: EnumConfig) -> Tuple[List[Dict[st
 
 def _layer_expand(mol, depth: int, history: List[Dict[str, Any]],
                   cfg: EnumConfig, seen_global: set,
-                  state_sigs: Optional[set] = None, aggregator=None, sugar_mask: Optional[set] = None, qa_bus: Optional[Dict] = None, budget_payload: Optional[dict] = None) -> Tuple[List[Tuple], List[Dict[str, Any]], Dict[str, Any]]:
+                  state_sigs: Optional[set] = None, aggregator=None, sugar_mask: Optional[set] = None, qa_bus: Optional[Dict] = None, budget_payload: Optional[dict] = None,
+                  root_parent_mol=None, root_parent_inchikey: str = None, root_parent_smiles: str = None) -> Tuple[List[Tuple], List[Dict[str, Any]], Dict[str, Any]]:
     """
     Expand one layer of the BFS tree.
     
@@ -1229,7 +1400,8 @@ def _layer_expand(mol, depth: int, history: List[Dict[str, Any]],
     reaction_rules = [r for r in cfg.rules if r in ('R3', 'R4', 'R5')]
     for rule_id in reaction_rules:
         reaction_products, rule_qa_stats = _apply_reaction_rule(
-            mol, rule_id, reactions, cfg, history, depth, seen_global, aggregator, sugar_mask, qa_bus, budget_payload
+            mol, rule_id, reactions, cfg, history, depth, seen_global, aggregator, sugar_mask, qa_bus, budget_payload,
+            root_parent_mol=root_parent_mol, root_parent_inchikey=root_parent_inchikey, root_parent_smiles=root_parent_smiles
         )
         for prod_mol, new_history, record, payload in reaction_products:
             # Compute new sugar mask for the product molecule
@@ -1244,8 +1416,8 @@ def _layer_expand(mol, depth: int, history: List[Dict[str, Any]],
                 continue
 
             product_records.append(record)
-            # For reaction rules (R3,R4,R5), pass budget payload unchanged
-            next_frontier.append((prod_mol, depth + 1, new_history, new_mask, payload))
+            # For reaction rules (R3,R4,R5), pass budget payload and root parent info unchanged
+            next_frontier.append((prod_mol, depth + 1, new_history, new_mask, payload, root_parent_mol, root_parent_inchikey, root_parent_smiles))
 
         # Merge rule QA stats into layer stats (for backward compatibility with totals)
         for key in ['no_product_matches', 'dedup_hits_statesig', 'dedup_hits_inchi', 'template_unsupported']:
@@ -1258,7 +1430,7 @@ def _layer_expand(mol, depth: int, history: List[Dict[str, Any]],
                     layer_qa_stats['qa_paths'][qa_key] += qa_count
 
     # 2) Apply site-type rules with symmetry folding (R1, R2, R6)
-    site_products = _apply_site_rules(mol, cfg, history, depth, seen_global, aggregator, sugar_mask, qa_bus, budget_payload)
+    site_products = _apply_site_rules(mol, cfg, history, depth, seen_global, aggregator, sugar_mask, qa_bus, budget_payload, root_parent_mol, root_parent_inchikey, root_parent_smiles)
     for product_tuple in site_products:
         if len(product_tuple) == 4:
             # R6 format: (prod_mol, new_history, record, new_budget_payload)
@@ -1280,7 +1452,7 @@ def _layer_expand(mol, depth: int, history: List[Dict[str, Any]],
             continue
 
         product_records.append(record)
-        next_frontier.append((prod_mol, depth + 1, new_history, new_mask, new_budget_payload))
+        next_frontier.append((prod_mol, depth + 1, new_history, new_mask, new_budget_payload, root_parent_mol, root_parent_inchikey, root_parent_smiles))
     
     return next_frontier, product_records, layer_qa_stats
 
@@ -1626,7 +1798,8 @@ def _sites_with_mask_drop(site_fn, *, mol, sugar_mask, qa_bus, **kwargs):
 
 
 def _apply_reaction_rule(mol, rule_id: str, reactions: Dict, cfg: EnumConfig,
-                        history: List[Dict[str, Any]], depth: int, seen_global: set, aggregator=None, sugar_mask: Optional[set] = None, qa_bus: Optional[Dict] = None, budget_payload: Optional[dict] = None) -> Tuple[List[Tuple], Dict[str, Any]]:
+                        history: List[Dict[str, Any]], depth: int, seen_global: set, aggregator=None, sugar_mask: Optional[set] = None, qa_bus: Optional[Dict] = None, budget_payload: Optional[dict] = None,
+                        root_parent_mol=None, root_parent_inchikey: str = None, root_parent_smiles: str = None) -> Tuple[List[Tuple], Dict[str, Any]]:
     """
     Apply reaction-based rule (R3, R4, R5) with proper attempt boundary semantics.
     
@@ -1723,7 +1896,8 @@ def _apply_reaction_rule(mol, rule_id: str, reactions: Dict, cfg: EnumConfig,
                     final_prod = _process_reaction_product(
                         product_mol, mol, site_atom_idx, ring_tag, rule_id, halogen,
                         history, depth, cfg, seen_global, qa_bus, budget_payload,
-                        attempt=attempt_qa_events
+                        attempt=attempt_qa_events,
+                        root_parent_mol=root_parent_mol, root_parent_inchikey=root_parent_inchikey, root_parent_smiles=root_parent_smiles
                     )
                     if final_prod:
                         results.append(final_prod)
@@ -1760,7 +1934,8 @@ def _apply_reaction_rule(mol, rule_id: str, reactions: Dict, cfg: EnumConfig,
                                 final_prod = _process_reaction_product(
                                     product_mol, mol, site_atom_idx, ring_tag, rule_id, halogen,
                                     history, depth, cfg, seen_global, qa_bus, budget_payload,
-                                    attempt=attempt_qa_events
+                                    attempt=attempt_qa_events,
+                                    root_parent_mol=root_parent_mol, root_parent_inchikey=root_parent_inchikey, root_parent_smiles=root_parent_smiles
                                 )
                                 if final_prod:
                                     results.append(final_prod)
@@ -1830,7 +2005,8 @@ def _process_reaction_product(product_mol, original_mol, site_atom_idx: int,
                             ring_tag: str, rule_id: str, halogen: str, history: List[Dict[str, Any]],
                             depth: int, cfg: EnumConfig, seen_global: set,
                             qa_bus: Optional[Dict[str, int]] = None, budget_payload: Optional[dict] = None,
-                            attempt: Optional[Dict[str, int]] = None) -> Optional[Tuple]:
+                            attempt: Optional[Dict[str, int]] = None,
+                            root_parent_mol=None, root_parent_inchikey: str = None, root_parent_smiles: str = None) -> Optional[Tuple]:
     """Process a single reaction product with correct deduplication strategy.
 
     P0 RETURN FORMAT: Returns 4-tuple (mol, history, record, budget_payload)
@@ -1856,7 +2032,8 @@ def _process_reaction_product(product_mol, original_mol, site_atom_idx: int,
         'sym': None,
         'ring_tag': ring_tag if ring_tag is not None else '',
         'halogen': halogen,
-        'depth': depth + 1
+        'depth': depth + 1,
+        'atom_cost': 1  # Single atom substitution (not macro)
     }
     new_history = history + [history_item]
     
@@ -1869,6 +2046,7 @@ def _process_reaction_product(product_mol, original_mol, site_atom_idx: int,
     policy = cfg.engine_cfg.get('dedup_policy', 'auto')
     if policy == 'auto':
         policy = 'stable_key' if cfg.pruning_cfg.get('enable_symmetry_fold', True) else 'state_sig'
+    enable_dedup = cfg.engine_cfg.get('enable_inchi_dedup', True)
 
     # Always compute sanitized key for the record, independent of dedup policy
     product_inchikey = None
@@ -1884,7 +2062,8 @@ def _process_reaction_product(product_mol, original_mol, site_atom_idx: int,
         metric='dedup_hits_inchi',
         policy=policy,
         state_sig=state_sig,
-        attempt=attempt
+        attempt=attempt,
+        enable=enable_dedup
     )
     if is_dup:
         # When using state_sig, also bump statesig counter for clarity
@@ -1899,20 +2078,27 @@ def _process_reaction_product(product_mol, original_mol, site_atom_idx: int,
     if product_inchikey is None:
         product_inchikey = compute_stable_key(final_prod) or "UNKNOWN"
 
-    # Create product record with sugar audit (if enabled)
-    product_mask, mask_degraded = get_sugar_mask_with_status(final_prod, mode=cfg.sugar_cfg.get('mode', 'heuristic'), sugar_cfg=cfg.sugar_cfg)
-    if mask_degraded and qa_bus is not None:
-        qa_bus['sugar_mask_degraded'] = qa_bus.get('sugar_mask_degraded', 0) + 1
-    if cfg.sugar_cfg.get('audit', False):
-        sugar_audit = compute_sugar_audit_fields(final_prod, product_mask, cfg.sugar_cfg)
-    else:
-        sugar_audit = None
-    record = _make_record(final_prod, original_mol, depth + 1, rule_id, halogen, new_history, True, sugar_audit, inchikey=product_inchikey)
+    # Create product record using unified emit_product function
+    record = emit_product(
+        product_mol=final_prod,
+        parent_mol=original_mol,
+        rule=rule_id,
+        rule_family=rule_id,  # Reaction rules use same name for family
+        halogen=halogen,
+        history=new_history,
+        depth=depth + 1,
+        budget_state=None,  # Budget tracking not used in reaction rules
+        extra_fields={'site_index': site_atom_idx, 'sym_class': None, 'ring_tag': ring_tag},
+        root_parent_mol=root_parent_mol,
+        root_parent_inchikey=root_parent_inchikey,
+        root_parent_smiles=root_parent_smiles
+    )
     return (final_prod, new_history, record, budget_payload)
 
 
 def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
-                     depth: int, seen_global: set, aggregator=None, sugar_mask: Optional[set] = None, qa_bus: Optional[Dict] = None, budget_payload: Optional[dict] = None) -> List[Tuple]:
+                     depth: int, seen_global: set, aggregator=None, sugar_mask: Optional[set] = None, qa_bus: Optional[Dict] = None, budget_payload: Optional[dict] = None,
+                     root_parent_mol=None, root_parent_inchikey: str = None, root_parent_smiles: str = None) -> List[Tuple]:
     """
     Apply site-based rules (R1, R2) with proper attempt boundary semantics.
 
@@ -2026,7 +2212,8 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                 site_result = _apply_single_site(
                     mol, site, halogen, rule_id, ranks, ring_label_map,
                     history, depth, cfg, seen_global, budget_payload, qa_bus,
-                    attempt=qa_events
+                    attempt=qa_events,
+                    root_parent_mol=root_parent_mol, root_parent_inchikey=root_parent_inchikey, root_parent_smiles=root_parent_smiles
                 )
                 if site_result:
                     results.append(site_result)
@@ -2039,90 +2226,117 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                                                    qa_events_dict=qa_events,
                                                    k_ops=None, k_atoms=None)
 
-    # PR2 Extensions: R2a and R2b (only when explicitly enabled)
+    # PR2 Extensions: R2a and R2b (only when explicitly enabled and R2 rule is active)
     # ========================================================
 
-    # T2-5: Initialize R2 halogen counters
-    # Get R2 allowed halogens once (used by both R2a and R2b)
-    # Intersect with main config halogens to respect user choice
-    r2_allowed_halogens_raw = cfg.rules_cfg.get('R2', {}).get('allowed_halogens', cfg.halogens)
-    r2_allowed_halogens = [h for h in r2_allowed_halogens_raw if h in cfg.halogens]
+    # Only execute R2 extensions if R2 is in the active rules list
+    if 'R2' in cfg.rules:
+        # T2-5: Initialize R2 halogen counters
+        # Get R2 configuration and log for debugging
+        r2_config = cfg.rules_cfg.get('R2', {})
+        LOG.debug("Effective R2 configuration (k>=2): %s", r2_config)
 
-    by_rule_halogen_counts = {
-        "R2a": {halogen: 0 for halogen in r2_allowed_halogens},
-        "R2b": {halogen: 0 for halogen in r2_allowed_halogens}
-    }
+        # Get R2 allowed halogens once (used by both R2a and R2b)
+        # Intersect with main config halogens to respect user choice
+        r2_allowed_halogens_raw = r2_config.get('allowed_halogens', cfg.halogens)
+        r2_allowed_halogens = [h for h in r2_allowed_halogens_raw if h in cfg.halogens]
 
-    # R2a: sp2 CH sites in C-ring (controlled by rules_cfg.R2.sp2_CH_in_C_ring)
-    r2a_sites = []
-    if cfg.rules_cfg.get('R2', {}).get('sp2_CH_in_C_ring', True):
-        r2a_sites = _sites_with_mask_drop(
-            c_ring_sp2_CH_sites, mol=mol, sugar_mask=sugar_mask, qa_bus=qa_bus
-        )
+        by_rule_halogen_counts = {
+            "R2a": {halogen: 0 for halogen in r2_allowed_halogens},
+            "R2b": {halogen: 0 for halogen in r2_allowed_halogens}
+        }
 
-        # Apply proximity guard to filter sites near sugar mask
-        r2a_sites = _apply_proximity_guard(r2a_sites, expanded_mask, qa_bus, 'R2a')
+        # R2a: sp2 CH sites in C-ring (controlled by rules_cfg.R2.sp2_CH_in_C_ring)
+        r2a_sites = []
+        if cfg.rules_cfg.get('R2', {}).get('sp2_CH_in_C_ring', True):
+            r2a_sites = _sites_with_mask_drop(
+                c_ring_sp2_CH_sites, mol=mol, sugar_mask=sugar_mask, qa_bus=qa_bus
+            )
 
-        if cfg.pruning_cfg.get('enable_symmetry_fold', True):
-            r2a_representatives = _pick_one_per_group_with_ring(r2a_sites, ranks, ring_label_map, 'R2a')
-        else:
-            r2a_representatives = r2a_sites
+            # Apply proximity guard to filter sites near sugar mask
+            r2a_sites = _apply_proximity_guard(r2a_sites, expanded_mask, qa_bus, 'R2a')
 
-        for site in r2a_representatives:
-            for halogen in r2_allowed_halogens:
-                attempt_qa = {}
-                site_result = _apply_single_site(
-                    mol, site, halogen, 'R2a', ranks, ring_label_map,
-                    history, depth, cfg, seen_global, budget_payload, qa_bus,
-                    attempt=attempt_qa
+            if cfg.pruning_cfg.get('enable_symmetry_fold', True):
+                r2a_representatives = _pick_one_per_group_with_ring(r2a_sites, ranks, ring_label_map, 'R2a')
+            else:
+                r2a_representatives = r2a_sites
+
+            for site in r2a_representatives:
+                for halogen in r2_allowed_halogens:
+                    attempt_qa = {}
+                    site_result = _apply_single_site(
+                        mol, site, halogen, 'R2a', ranks, ring_label_map,
+                        history, depth, cfg, seen_global, budget_payload, qa_bus,
+                        attempt=attempt_qa,
+                        root_parent_mol=root_parent_mol, root_parent_inchikey=root_parent_inchikey, root_parent_smiles=root_parent_smiles,
+                        detection='strict'  # R2a always uses strict detection
+                    )
+                    if site_result:
+                        results.append(site_result)
+                        # T2-5: Increment halogen counter for successful R2a products
+                        by_rule_halogen_counts["R2a"][halogen] += 1
+
+                    # Record attempt for R2a
+                    if aggregator:
+                        aggregator.record_attempt_result('R2a', halogen, depth + 1,
+                                                       produced_count=(1 if site_result else 0),
+                                                       qa_events_dict=attempt_qa,
+                                                       k_ops=None, k_atoms=None)
+
+        # R2b: sp3 CH2 sites in flavanone C-ring (controlled by rules_cfg.R2.sp3_CH2_flavanone)
+        r2b_sites = []
+        r2b_used_fallback = False
+        if cfg.rules_cfg.get('R2', {}).get('sp3_CH2_flavanone', True):
+            # Get R2b sites with detection information
+            r2b_sites, r2b_used_fallback = c_ring_sp3_CH2_flavanone_sites(
+                mol, masked_atoms=sugar_mask, sugar_cfg=cfg.sugar_cfg,
+                rules_cfg=cfg.rules_cfg, return_detection=True
+            )
+
+            # Manual sugar mask QA tracking (since we're not using _sites_with_mask_drop)
+            if sugar_mask:
+                raw_r2b_sites, _ = c_ring_sp3_CH2_flavanone_sites(
+                    mol, masked_atoms=set(), sugar_cfg=cfg.sugar_cfg,
+                    rules_cfg=cfg.rules_cfg, return_detection=True
                 )
-                if site_result:
-                    results.append(site_result)
-                    # T2-5: Increment halogen counter for successful R2a products
-                    by_rule_halogen_counts["R2a"][halogen] += 1
+                drop = max(0, len(raw_r2b_sites) - len(r2b_sites))
+                if qa_bus is not None:
+                    qa_bus['sugar_mask_filtered'] = qa_bus.get('sugar_mask_filtered', 0) + drop
+                LOG.debug(f"R2b site masking: raw={len(raw_r2b_sites)}, masked={len(r2b_sites)}, drop={drop}")
 
-                # Record attempt for R2a
-                if aggregator:
-                    aggregator.record_attempt_result('R2a', halogen, depth + 1,
-                                                   produced_count=(1 if site_result else 0),
-                                                   qa_events_dict=attempt_qa,
-                                                   k_ops=None, k_atoms=None)
+            # Determine detection label for metadata
+            r2b_detection = 'fallback' if r2b_used_fallback else 'strict'
 
-    # R2b: sp3 CH2 sites in flavanone C-ring (controlled by rules_cfg.R2.sp3_CH2_flavanone)
-    r2b_sites = []
-    if cfg.rules_cfg.get('R2', {}).get('sp3_CH2_flavanone', True):
-        r2b_sites = _sites_with_mask_drop(
-            c_ring_sp3_CH2_flavanone_sites, mol=mol, sugar_mask=sugar_mask, qa_bus=qa_bus, sugar_cfg=cfg.sugar_cfg
-        )
+            # Apply proximity guard to filter sites near sugar mask
+            r2b_sites = _apply_proximity_guard(r2b_sites, expanded_mask, qa_bus, 'R2b')
 
-        # Apply proximity guard to filter sites near sugar mask
-        r2b_sites = _apply_proximity_guard(r2b_sites, expanded_mask, qa_bus, 'R2b')
+            if cfg.pruning_cfg.get('enable_symmetry_fold', True):
+                # R2b symmetry with 'CH2' tag for proper grouping: ('R2b', sym_class, ring_tag, 'CH2')
+                r2b_representatives = _pick_one_per_group_with_ring(r2b_sites, ranks, ring_label_map, 'R2b', extra_tag='CH2')
+            else:
+                r2b_representatives = r2b_sites
 
-        if cfg.pruning_cfg.get('enable_symmetry_fold', True):
-            # R2b symmetry with 'CH2' tag for proper grouping: ('R2b', sym_class, ring_tag, 'CH2')
-            r2b_representatives = _pick_one_per_group_with_ring(r2b_sites, ranks, ring_label_map, 'R2b', extra_tag='CH2')
-        else:
-            r2b_representatives = r2b_sites
+            for site in r2b_representatives:
+                for halogen in r2_allowed_halogens:
+                    attempt_qa = {}
+                    site_result = _apply_single_site(
+                        mol, site, halogen, 'R2b', ranks, ring_label_map,
+                        history, depth, cfg, seen_global, budget_payload, qa_bus,
+                        attempt=attempt_qa,
+                        root_parent_mol=root_parent_mol, root_parent_inchikey=root_parent_inchikey, root_parent_smiles=root_parent_smiles,
+                        detection=r2b_detection  # Pass detection metadata
+                    )
+                    if site_result:
+                        results.append(site_result)
+                        # T2-5: Increment halogen counter for successful R2b products
+                        by_rule_halogen_counts["R2b"][halogen] += 1
 
-        for site in r2b_representatives:
-            for halogen in r2_allowed_halogens:
-                attempt_qa = {}
-                site_result = _apply_single_site(
-                    mol, site, halogen, 'R2b', ranks, ring_label_map,
-                    history, depth, cfg, seen_global, budget_payload, qa_bus,
-                    attempt=attempt_qa
-                )
-                if site_result:
-                    results.append(site_result)
-                    # T2-5: Increment halogen counter for successful R2b products
-                    by_rule_halogen_counts["R2b"][halogen] += 1
-
-                # Record attempt for R2b
-                if aggregator:
-                    aggregator.record_attempt_result('R2b', halogen, depth + 1,
-                                                   produced_count=(1 if site_result else 0),
-                                                   qa_events_dict=attempt_qa,
-                                                   k_ops=None, k_atoms=None)
+                    # Record attempt for R2b
+                    if aggregator:
+                        aggregator.record_attempt_result('R2b', halogen, depth + 1,
+                                                       produced_count=(1 if site_result else 0),
+                                                       qa_events_dict=attempt_qa,
+                                                       k_ops=None, k_atoms=None)
 
     # R6: Methyl halogenation rules (controlled by rules_cfg.R6_methyl.enable)
     # =====================================================================
@@ -2132,17 +2346,24 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
     # gets its own budget_tmp = budget.copy() to ensure failed paths don't
     # corrupt the budget state for successful paths.
     #
+    # Only execute R6 if R6_methyl is in the active rules list and enabled in config
     r6_config = cfg.rules_cfg.get('R6_methyl', {})
-    if r6_config.get('enable', False):
+    if 'R6_methyl' in cfg.rules and r6_config.get('enable', False):
         LOG.debug("Processing R6 methyl halogenation rules")
 
-        # Get methyl sites
+        # Get methyl sites (now returns structured descriptors)
         allow_on_methoxy = r6_config.get('allow_on_methoxy', False)
-        r6_sites = enumerate_methyl_sites(mol, sugar_mask or set(), allow_on_methoxy)
-        LOG.debug(f"R6 sites found: {len(r6_sites)}")
+        allow_allylic_methyl = r6_config.get('allow_allylic_methyl', False)
+        r6_site_descriptors = enumerate_methyl_sites(mol, sugar_mask or set(), allow_on_methoxy, allow_allylic_methyl)
+        LOG.debug(f"R6 sites found: {len(r6_site_descriptors)}")
 
         # Apply proximity guard to filter sites near sugar mask
-        r6_sites = _apply_proximity_guard(r6_sites, expanded_mask, qa_bus, 'R6')
+        # Extract indices for proximity guard, then rebuild structured list
+        r6_indices = [site['idx'] for site in r6_site_descriptors]
+        filtered_indices = _apply_proximity_guard(r6_indices, expanded_mask, qa_bus, 'R6_methyl')
+
+        # Rebuild structured site list with only the filtered sites
+        r6_sites = [site for site in r6_site_descriptors if site['idx'] in filtered_indices]
 
         # Initialize budget state from payload or create new one
         if budget_payload is None:
@@ -2151,7 +2372,6 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
             budget = BudgetState(budget_mode, cfg.k_max)
         else:
             # Restore budget state from payload
-            from .budget import BudgetState
             budget = BudgetState.from_payload(budget_payload, cfg.k_max)
 
         # Track local state dedup per site
@@ -2161,7 +2381,8 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
         r6_allowed = r6_config.get('allowed', ['F', 'Cl'])
 
         # Process each methyl site
-        for cidx in r6_sites:
+        for site in r6_sites:
+            cidx = site['idx']  # Extract carbon index from site descriptor
             seen_local_states[cidx] = set()
 
             # Try step halogenation for each allowed halogen
@@ -2193,12 +2414,12 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
 
                 seen_local_states[cidx].add(next_state_key)
 
-                # Apply step halogenation
-                new_mol = apply_methyl_step(mol, cidx, X)
+                # Apply step halogenation (pass full site descriptor for type-aware processing)
+                new_mol = apply_methyl_step(mol, site, X)
                 if new_mol is None:
                     # Record failed attempt
                     if aggregator:
-                        aggregator.record_attempt_result('R6', X, depth + 1,
+                        aggregator.record_attempt_result('R6_methyl', X, depth + 1,
                                                        produced_count=0,
                                                        qa_events_dict=attempt_qa,
                                                        k_ops=getattr(budget_tmp, 'k_ops', None),
@@ -2210,6 +2431,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                 policy = cfg.engine_cfg.get('dedup_policy', 'auto')
                 if policy == 'auto':
                     policy = 'stable_key' if cfg.pruning_cfg.get('enable_symmetry_fold', True) else 'state_sig'
+                enable_dedup = cfg.engine_cfg.get('enable_inchi_dedup', True)
 
                 # Always compute sanitized key for the record, independent of dedup policy
                 product_inchikey = None
@@ -2219,7 +2441,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                 if policy == 'state_sig':
                     # For R6, create minimal history for state signature computation
                     temp_history = history + [{
-                        'rule': 'R6',
+                        'rule': 'R6_methyl',
                         'site': cidx,
                         'halogen': X,
                         'type': 'step'
@@ -2235,7 +2457,8 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                         metric='dedup_hits_inchi',
                         policy=policy,
                         state_sig=state_sig,
-                        attempt=attempt_qa
+                        attempt=attempt_qa,
+                        enable=enable_dedup
                     )
                     if is_dup:
                         # When using state_sig, also bump statesig counter for clarity
@@ -2243,7 +2466,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                             qa_mark(qa_bus, attempt_qa, 'dedup_hits_statesig')
                         # Record failed attempt due to dedup
                         if aggregator:
-                            aggregator.record_attempt_result('R6', X, depth + 1,
+                            aggregator.record_attempt_result('R6_methyl', X, depth + 1,
                                                            produced_count=0,
                                                            qa_events_dict=attempt_qa,
                                                            k_ops=getattr(budget_tmp, 'k_ops', None),
@@ -2256,13 +2479,15 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                 budget_tmp.bump_state(cidx, X)
 
                 # Create product history record
+                # FIX: Added atom_cost=1 for explicit tracking (step = single atom substitution)
                 new_history = history + [{
-                    'rule': 'R6',
+                    'rule': 'R6_methyl',  # Use consistent rule name
                     'site': cidx,
                     'halogen': X,
                     'type': 'step',
-                    'k_ops': budget_tmp.k_ops,
-                    'k_atoms': budget_tmp.k_atoms,
+                    'atom_cost': 1,  # Single F/Cl atom replacement
+                    'k_ops': budget_tmp.k_ops,  # Legacy: keep for backward compatibility
+                    'k_atoms': budget_tmp.k_atoms,  # Legacy: keep for backward compatibility
                     'budget_mode': budget_tmp.budget_mode
                 }]
 
@@ -2270,7 +2495,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                 if not accept_constraints(new_mol, new_history, cfg.constraints):
                     # Record failed attempt
                     if aggregator:
-                        aggregator.record_attempt_result('R6', X, depth + 1,
+                        aggregator.record_attempt_result('R6_methyl', X, depth + 1,
                                                        produced_count=0,
                                                        qa_events_dict=attempt_qa,
                                                        k_ops=getattr(budget_tmp, 'k_ops', None),
@@ -2285,14 +2510,15 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                             metric='dedup_hits_inchi',
                             policy=policy,
                             state_sig=state_sig,
-                            attempt=attempt_qa
+                            attempt=attempt_qa,
+                            enable=enable_dedup
                         )
                         if is_dup:
                             if policy == 'state_sig':
                                 qa_mark(qa_bus, attempt_qa, 'dedup_hits_statesig')
                             # Record failed attempt
                             if aggregator:
-                                aggregator.record_attempt_result('R6', X, depth + 1,
+                                aggregator.record_attempt_result('R6_methyl', X, depth + 1,
                                                                produced_count=0,
                                                                qa_events_dict=attempt_qa,
                                                                k_ops=getattr(budget_tmp, 'k_ops', None),
@@ -2304,7 +2530,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                     qa_mark(qa_bus, attempt_qa, 'sugar_post_guard_blocked')
                     # Record failed attempt
                     if aggregator:
-                        aggregator.record_attempt_result('R6', X, depth + 1,
+                        aggregator.record_attempt_result('R6_methyl', X, depth + 1,
                                                        produced_count=0,
                                                        qa_events_dict=attempt_qa,
                                                        k_ops=getattr(budget_tmp, 'k_ops', None),
@@ -2318,20 +2544,20 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                 if product_inchikey is None:
                     product_inchikey = compute_stable_key(new_mol) or "UNKNOWN"
 
-                # Create product record
-                record = {
-                    'smiles': Chem.MolToSmiles(new_mol),
-                    'inchikey': product_inchikey,
-                    'rule': 'R6',
-                    'rule_family': 'R6',  # Rule family for grouping
-                    'halogen': X,
-                    'k': budget_tmp.k_atoms,
-                    'k_ops': budget_tmp.k_ops,
-                    'k_atoms': budget_tmp.k_atoms,
-                    'budget_mode': budget_tmp.budget_mode,
-                    'parent_smi': Chem.MolToSmiles(mol),
-                    'site_tokens_json': json.dumps(getattr(budget_tmp, 'site_tokens', {}) or {}, separators=(',', ':'))
-                }
+                # Create product record using unified emit_product function
+                record = emit_product(
+                    product_mol=new_mol,
+                    parent_mol=mol,
+                    rule='R6_methyl',
+                    rule_family='R6',  # Unified family for statistical consistency
+                    halogen=X,
+                    history=new_history,
+                    depth=budget_tmp.k_atoms,
+                    budget_state=budget_tmp,
+                    root_parent_mol=root_parent_mol,
+                    root_parent_inchikey=root_parent_inchikey,
+                    root_parent_smiles=root_parent_smiles
+                )
 
                 # Include updated budget payload for BFS continuation
                 new_budget_payload = budget_tmp.to_payload()
@@ -2350,7 +2576,8 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
         if macro_cfg.get('enable', False):
             macro_labels = macro_cfg.get('labels', ['CF3', 'CCl3'])
 
-            for cidx in r6_sites:
+            for site in r6_sites:
+                cidx = site['idx']  # Extract carbon index from site descriptor
                 for label in macro_labels:
                     X = 'F' if label == 'CF3' else 'Cl'
 
@@ -2374,7 +2601,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                     if new_mol is None:
                         # Record failed attempt
                         if aggregator:
-                            aggregator.record_attempt_result('R6', X, depth + 1,
+                            aggregator.record_attempt_result('R6_methyl', X, depth + 1,
                                                            produced_count=0,
                                                            qa_events_dict=attempt_qa,
                                                            k_ops=getattr(budget_tmp, 'k_ops', None),
@@ -2386,6 +2613,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                     policy = cfg.engine_cfg.get('dedup_policy', 'auto')
                     if policy == 'auto':
                         policy = 'stable_key' if cfg.pruning_cfg.get('enable_symmetry_fold', True) else 'state_sig'
+                    enable_dedup_macro = cfg.engine_cfg.get('enable_inchi_dedup', True)
 
                     # Always compute sanitized key for the record, independent of dedup policy
                     product_inchikey = None
@@ -2395,7 +2623,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                     if policy == 'state_sig':
                         # For R6 macro, create minimal history for state signature computation
                         temp_history = history + [{
-                            'rule': 'R6',
+                            'rule': 'R6_methyl',
                             'site': cidx,
                             'halogen': X,
                             'type': 'macro',
@@ -2412,7 +2640,8 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                             metric='dedup_hits_inchi',
                             policy=policy,
                             state_sig=state_sig,
-                            attempt=attempt_qa
+                            attempt=attempt_qa,
+                            enable=enable_dedup_macro
                         )
                         if is_dup:
                             # When using state_sig, also bump statesig counter for clarity
@@ -2420,7 +2649,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                                 qa_mark(qa_bus, attempt_qa, 'dedup_hits_statesig')
                             # Record failed attempt due to dedup
                             if aggregator:
-                                aggregator.record_attempt_result('R6', X, depth + 1,
+                                aggregator.record_attempt_result('R6_methyl', X, depth + 1,
                                                                produced_count=0,
                                                                qa_events_dict=attempt_qa,
                                                                k_ops=getattr(budget_tmp, 'k_ops', None),
@@ -2434,14 +2663,16 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                         budget_tmp.bump_state(cidx, X)
 
                     # Create product history record
+                    # FIX: Added atom_cost=3 for explicit tracking (macro = CF3/CCl3)
                     new_history = history + [{
-                        'rule': 'R6',
+                        'rule': 'R6_methyl',
                         'site': cidx,
                         'halogen': X,
                         'type': 'macro',
                         'label': label,
-                        'k_ops': budget_tmp.k_ops,
-                        'k_atoms': budget_tmp.k_atoms,
+                        'atom_cost': 3,  # CF3/CCl3 = 3 halogen atoms
+                        'k_ops': budget_tmp.k_ops,  # Legacy: keep for backward compatibility
+                        'k_atoms': budget_tmp.k_atoms,  # Legacy: keep for backward compatibility
                         'budget_mode': budget_tmp.budget_mode
                     }]
 
@@ -2449,7 +2680,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                     if not accept_constraints(new_mol, new_history, cfg.constraints):
                         # Record failed attempt
                         if aggregator:
-                            aggregator.record_attempt_result('R6', X, depth + 1,
+                            aggregator.record_attempt_result('R6_methyl', X, depth + 1,
                                                            produced_count=0,
                                                            qa_events_dict=attempt_qa,
                                                            k_ops=getattr(budget_tmp, 'k_ops', None),
@@ -2464,14 +2695,15 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                                 metric='dedup_hits_inchi',
                                 policy=policy,
                                 state_sig=state_sig,
-                                attempt=attempt_qa
+                                attempt=attempt_qa,
+                                enable=enable_dedup_macro
                             )
                             if is_dup:
                                 if policy == 'state_sig':
                                     qa_mark(qa_bus, attempt_qa, 'dedup_hits_statesig')
                                 # Record failed attempt
                                 if aggregator:
-                                    aggregator.record_attempt_result('R6', X, depth + 1,
+                                    aggregator.record_attempt_result('R6_methyl', X, depth + 1,
                                                                    produced_count=0,
                                                                    qa_events_dict=attempt_qa,
                                                                    k_ops=getattr(budget_tmp, 'k_ops', None),
@@ -2483,7 +2715,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                         qa_mark(qa_bus, attempt_qa, 'sugar_post_guard_blocked')
                         # Record failed attempt
                         if aggregator:
-                            aggregator.record_attempt_result('R6', X, depth + 1,
+                            aggregator.record_attempt_result('R6_methyl', X, depth + 1,
                                                            produced_count=0,
                                                            qa_events_dict=attempt_qa,
                                                            k_ops=getattr(budget_tmp, 'k_ops', None),
@@ -2501,8 +2733,8 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
                     record = {
                         'smiles': Chem.MolToSmiles(new_mol),
                         'inchikey': product_inchikey,
-                        'rule': 'R6',
-                        'rule_family': 'R6',  # Rule family for grouping
+                        'rule': 'R6_methyl',
+                        'rule_family': 'R6',  # Unified family for statistical consistency
                         'halogen': X,
                         'macro_label': label,
                         'k': budget_tmp.k_atoms,
@@ -2519,7 +2751,7 @@ def _apply_site_rules(mol, cfg: EnumConfig, history: List[Dict[str, Any]],
 
                     # Record successful attempt
                     if aggregator:
-                        aggregator.record_attempt_result('R6', X, depth + 1,
+                        aggregator.record_attempt_result('R6_methyl', X, depth + 1,
                                                        produced_count=1,
                                                        qa_events_dict=attempt_qa,
                                                        k_ops=getattr(budget_tmp, 'k_ops', None),
@@ -2533,8 +2765,14 @@ def _apply_single_site(mol, site: int, halogen: str, rule: str,
                       history: List[Dict[str, Any]], depth: int,
                       cfg: EnumConfig, seen_global: set, budget_payload: Optional[dict] = None,
                       qa_bus: Optional[Dict[str, int]] = None,
-                      attempt: Optional[Dict[str, int]] = None) -> Optional[Tuple]:
-    """Apply halogenation to a single site."""
+                      attempt: Optional[Dict[str, int]] = None,
+                      root_parent_mol=None, root_parent_inchikey: str = None, root_parent_smiles: str = None,
+                      detection: Optional[str] = None) -> Optional[Tuple]:
+    """Apply halogenation to a single site.
+
+    Args:
+        detection: Detection method for R2b ('strict' or 'fallback'), None for other rules
+    """
 
     # Apply halogenation
     product_mol = apply_single_site_halogenation(mol, site, halogen)
@@ -2548,7 +2786,8 @@ def _apply_single_site(mol, site: int, halogen: str, rule: str,
         'sym': int(ranks[site]),
         'ring_tag': ring_label_map.get(site),
         'halogen': halogen,
-        'depth': depth + 1
+        'depth': depth + 1,
+        'atom_cost': 1  # Single atom substitution (not macro)
     }
     new_history = history + [history_item]
 
@@ -2557,6 +2796,7 @@ def _apply_single_site(mol, site: int, halogen: str, rule: str,
     policy = cfg.engine_cfg.get('dedup_policy', 'auto')
     if policy == 'auto':
         policy = 'stable_key' if cfg.pruning_cfg.get('enable_symmetry_fold', True) else 'state_sig'
+    enable_dedup = cfg.engine_cfg.get('enable_inchi_dedup', True)
 
     # Always compute sanitized key for the record, independent of dedup policy
     product_inchikey = None
@@ -2575,7 +2815,8 @@ def _apply_single_site(mol, site: int, halogen: str, rule: str,
             metric='dedup_hits_inchi',
             policy=policy,
             state_sig=state_sig,
-            attempt=attempt
+            attempt=attempt,
+            enable=enable_dedup
         )
         if is_dup:
             # When using state_sig, also bump statesig counter for clarity
@@ -2596,7 +2837,8 @@ def _apply_single_site(mol, site: int, halogen: str, rule: str,
                 metric='dedup_hits_inchi',
                 policy=policy,
                 state_sig=state_sig,
-                attempt=attempt
+                attempt=attempt,
+                enable=enable_dedup
             )
             if is_dup:
                 if policy == 'state_sig':
@@ -2610,13 +2852,34 @@ def _apply_single_site(mol, site: int, halogen: str, rule: str,
     if product_inchikey is None:
         product_inchikey = compute_stable_key(product_mol) or "UNKNOWN"
 
-    # Create product record with sugar audit (if enabled)
-    product_mask, _ = get_sugar_mask_with_status(product_mol, mode=cfg.sugar_cfg.get('mode', 'heuristic'), sugar_cfg=cfg.sugar_cfg)
-    if cfg.sugar_cfg.get('audit', False):
-        sugar_audit = compute_sugar_audit_fields(product_mol, product_mask, cfg.sugar_cfg)
-    else:
-        sugar_audit = None
-    record = _make_record(product_mol, mol, depth + 1, rule, halogen, new_history, True, sugar_audit, inchikey=product_inchikey)
+    # Build extra_fields with metadata
+    extra_fields = {
+        'site_index': site,
+        'sym_class': ranks[site],
+        'ring_tag': ring_label_map.get(site)
+    }
+
+    # Add sub_rule and detection for R2 family
+    if rule in ('R2a', 'R2b'):
+        extra_fields['sub_rule'] = rule
+        if detection is not None:
+            extra_fields['detection'] = detection
+
+    # Create product record using unified emit_product function
+    record = emit_product(
+        product_mol=product_mol,
+        parent_mol=mol,
+        rule=rule,
+        rule_family='R2' if rule in ('R2a', 'R2b') else rule,  # Family mapping for R2 sub-rules
+        halogen=halogen,
+        history=new_history,
+        depth=depth + 1,
+        budget_state=None,  # Budget tracking not used in site-based rules
+        extra_fields=extra_fields,
+        root_parent_mol=root_parent_mol,
+        root_parent_inchikey=root_parent_inchikey,
+        root_parent_smiles=root_parent_smiles
+    )
     return (product_mol, new_history, record, budget_payload)
 
 
@@ -2706,6 +2969,139 @@ def _pick_one_per_group_with_ring(sites: List[int], ranks: List[int],
     # Pick first representative from each group
     return [sites[0] for sites in groups.values()]
 
+
+def emit_product(product_mol, parent_mol, *, rule: str, rule_family: str = None,
+                halogen: str, history: List[Dict[str, Any]], depth: int,
+                budget_state=None, extra_fields: Dict = None,
+                root_parent_mol=None, root_parent_inchikey: str = None,
+                root_parent_smiles: str = None,
+                metrics_override: Dict[str, int] = None) -> Dict[str, Any]:
+    """
+    Unified product emission function that ensures all parent tracking fields are populated.
+
+    Args:
+        product_mol: The generated product molecule
+        parent_mol: The immediate parent molecule (k-1 for k>=2, or root for k=1)
+        rule: Rule name (R1, R2a, R2b, R3, R4, R5, R6, etc.)
+        rule_family: Rule family for grouping (defaults to rule)
+        halogen: Halogen applied
+        history: Complete substitution history (AUTHORITATIVE SOURCE for k_ops/k_atoms)
+        depth: Current depth/k value
+        budget_state: Budget state object (legacy, used for site_tokens only).
+                     IMPORTANT: budget_state is NO LONGER used for k_ops/k_atoms calculation.
+                     These metrics are now ALWAYS derived from history (the single source of truth).
+                     budget_state only provides auxiliary data like site_tokens and budget_mode.
+        extra_fields: Additional fields to include in record
+        root_parent_mol: Root parent molecule (for k>=2 genealogy)
+        root_parent_inchikey: Root parent InChIKey (for k>=2 genealogy)
+        root_parent_smiles: Root parent SMILES (for k>=2 genealogy)
+        metrics_override: Optional dict to override k_ops/k_atoms (e.g., for macro substitutions)
+                         Example: {'k_ops': 1, 'k_atoms': 3} for CF3/CCl3 macro
+
+    Returns:
+        Complete product record with all parent tracking fields
+    """
+    try:
+        # Compute rule_family if not provided (centralized logic)
+        if rule_family is None:
+            from .schema import compute_rule_family
+            rule_family = compute_rule_family(rule)
+
+        # Basic product identifiers
+        product_smiles = Chem.MolToSmiles(product_mol, canonical=True)
+        product_inchikey = to_inchikey_sanitized(product_mol) or to_inchikey(product_mol) or 'UNKNOWN'
+
+        # Immediate parent identifiers
+        parent_smiles = Chem.MolToSmiles(parent_mol, canonical=True)
+        parent_inchikey = to_inchikey_sanitized(parent_mol) or to_inchikey(parent_mol) or 'UNKNOWN'
+
+        # Root parent identifiers (for proper genealogy tracking)
+        if root_parent_mol is not None:
+            root_smiles = Chem.MolToSmiles(root_parent_mol, canonical=True)
+            root_inchikey = to_inchikey_sanitized(root_parent_mol) or to_inchikey(root_parent_mol) or 'UNKNOWN'
+        else:
+            # For k=1, root parent is the same as immediate parent
+            root_smiles = root_parent_smiles or parent_smiles
+            root_inchikey = root_parent_inchikey or parent_inchikey
+
+        # Build record with complete genealogy tracking
+        # CRITICAL FIX: k_ops/k_atoms are now ALWAYS derived from history (the single source of truth)
+        # This ensures consistency across all enumeration paths (k=1, k>=2, all rules)
+        # Priority: metrics_override (for special cases) > history (authoritative) > fallback
+        if metrics_override:
+            # Allow explicit override for special cases (e.g., testing)
+            k_ops_value = metrics_override.get('k_ops', len(history or []))
+            k_atoms_value = metrics_override.get('k_atoms', len(history or []))
+        else:
+            # Authoritative calculation from history
+            k_ops_value = len(history or [])
+
+            # k_atoms: sum of atom costs from each step in history
+            # Default atom_cost=1 for step substitutions (F, Cl, Br, I single atom)
+            # atom_cost=3 for macro substitutions (CF3, CCl3)
+            k_atoms_value = 0
+            for step in (history or []):
+                # Check if step explicitly has atom_cost
+                if 'atom_cost' in step:
+                    k_atoms_value += int(step['atom_cost'])
+                # Legacy: infer from type='macro' and label='CF3'/'CCl3'
+                elif step.get('type') == 'macro' and step.get('label') in ('CF3', 'CCl3'):
+                    k_atoms_value += 3
+                else:
+                    # Default: single atom substitution
+                    k_atoms_value += 1
+
+        record = {
+            'smiles': product_smiles,
+            'inchikey': product_inchikey,
+            'rule': rule,
+            'rule_family': rule_family or rule,
+            'halogen': halogen,
+            'k': k_ops_value,  # k always equals k_ops (operation count)
+
+            # Critical: Both immediate parent and root parent tracking
+            'parent_inchikey': parent_inchikey,
+            'parent_smiles': parent_smiles,
+            'parent_smi': parent_smiles,  # Legacy compatibility
+            'root_parent_inchikey': root_inchikey,
+            'root_parent_smiles': root_smiles,
+
+            # Budget state information (preserve both dimensions)
+            'k_ops': k_ops_value,
+            'k_atoms': k_atoms_value,
+            'budget_mode': getattr(budget_state, 'budget_mode', 'ops') if budget_state else 'ops',
+
+            # Additional fields
+            'constraints_ok': True,  # Assume passed if we got here
+            'substitutions': history or [],  # Typed field; will be serialized to substitutions_json by io_utils
+        }
+
+        # Add budget-specific fields
+        if budget_state:
+            site_tokens = getattr(budget_state, 'site_tokens', {}) or {}
+            record['site_tokens_json'] = json.dumps(site_tokens, separators=(',', ':'))
+
+        # Add any extra fields
+        if extra_fields:
+            record.update(extra_fields)
+
+        return record
+
+    except Exception as e:
+        # Fallback record in case of errors
+        return {
+            'smiles': '',
+            'inchikey': 'ERROR',
+            'rule': rule,
+            'rule_family': rule_family or rule,
+            'halogen': halogen,
+            'k': depth,
+            'parent_inchikey': 'ERROR',
+            'parent_smiles': '',
+            'root_parent_inchikey': 'ERROR',
+            'root_parent_smiles': '',
+            'error': str(e)
+        }
 
 def _make_record(product_mol, parent_mol, depth: int, rule: str,
                 halogen: str, history: List[Dict[str, Any]], constraints_ok: bool,

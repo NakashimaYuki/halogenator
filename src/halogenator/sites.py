@@ -41,9 +41,12 @@ Benzene: c1ccccc1
 """
 
 import functools
+import logging
 import weakref
 from typing import List, Dict, Any, Optional, Set, Iterable, Tuple
 from .chem_compat import Chem, mol_to_smiles_safe, canonical_rank_atoms_safe
+
+LOG = logging.getLogger(__name__)
 
 # Sugar ring identification cache to avoid raw+masked duplicate computation
 try:
@@ -71,7 +74,8 @@ def _find_sugar_rings_by_smiles(smiles: str, cfg_key: tuple) -> tuple:
     if mol is None:
         return ()
     cfg_dict = dict(cfg_key) if cfg_key else {}
-    return tuple(_find_sugar_rings(mol, cfg_dict))
+    evidences = _find_sugar_rings(mol, cfg_dict)
+    return tuple(evidence.ring for evidence in evidences)
 
 
 def _find_sugar_rings_cached(mol, sugar_cfg):
@@ -91,7 +95,8 @@ def _find_sugar_rings_cached(mol, sugar_cfg):
 
             # Cache miss - compute and store
             from .sugar_mask import _find_sugar_rings
-            rings = list(_find_sugar_rings(mol, sugar_cfg))
+            evidences = _find_sugar_rings(mol, sugar_cfg)
+            rings = [evidence.ring for evidence in evidences]
             entry = {} if entry is None else dict(entry)
             entry[cfg_key] = rings
             _sugar_rings_cache[mol] = entry
@@ -110,7 +115,8 @@ def _find_sugar_rings_cached(mol, sugar_cfg):
         # Direct computation as last resort
         from .sugar_mask import _find_sugar_rings
         _SUGAR_RING_CACHE_STATS["miss"] += 1
-        return list(_find_sugar_rings(mol, sugar_cfg))
+        evidences = _find_sugar_rings(mol, sugar_cfg)
+        return [evidence.ring for evidence in evidences]
 
 
 # T29: Optional cache hit monitoring for debugging
@@ -239,25 +245,25 @@ def is_carbonyl_carbon(atom) -> Optional[bool]:
 def is_c_ring_site_ready(mol, aidx: int) -> bool:
     """Check if atom is valid C ring site for R2. Assumes mol is already prepared."""
     atom = mol.GetAtomWithIdx(aidx)
-    
+
     # Must be carbon
     if atom.GetSymbol() != 'C':
         return False
-    
+
     # Must be in 6-member ring
     ring_info = mol.GetRingInfo()
     atom_rings = ring_info.AtomRings()
     in_6ring = False
     six_rings = []
-    
+
     for ring in atom_rings:
         if aidx in ring and len(ring) == 6:
             in_6ring = True
             six_rings.append(ring)
-    
+
     if not in_6ring:
         return False
-    
+
     # Must have exactly 1 hydrogen
     try:
         if atom.GetTotalNumHs() != 1:
@@ -265,7 +271,7 @@ def is_c_ring_site_ready(mol, aidx: int) -> bool:
     except Exception:
         # Skip if hydrogen count unavailable
         return False
-    
+
     # Must not be carbonyl carbon
     carbonyl_result = is_carbonyl_carbon(atom)
     if carbonyl_result is True:  # Only reject if definitively carbonyl
@@ -274,21 +280,29 @@ def is_c_ring_site_ready(mol, aidx: int) -> bool:
     # NOTE: When carbonyl_result is None (RDKit unavailable), we assume non-carbonyl.
     # This is a "relaxed" policy that may include some false positives in site selection
     # but avoids blocking enumeration when RDKit is unavailable.
-    
-    # Must have O neighbor in the same 6-member ring
-    has_ring_oxygen = False
-    for neighbor in atom.GetNeighbors():
-        if neighbor.GetSymbol() == 'O':
-            neighbor_idx = neighbor.GetIdx()
-            # Check if this O is in any of the same 6-rings as our carbon
-            for ring in six_rings:
-                if neighbor_idx in ring:
-                    has_ring_oxygen = True
-                    break
-            if has_ring_oxygen:
-                break
-    
-    return has_ring_oxygen
+
+    # Check if atom is in a C-ring (contains carbonyl + bridge oxygen in same ring)
+    is_in_c_ring = False
+    for ring in six_rings:
+        ring_atoms = set(ring)
+        # Check if ring contains carbonyl
+        has_carbonyl = _is_carbonyl_in_ring(mol, ring_atoms)
+        # Check if ring contains bridge oxygen
+        has_bridge_oxygen = any(mol.GetAtomWithIdx(i).GetSymbol() == 'O' and
+                               mol.GetAtomWithIdx(i).GetDegree() == 2 for i in ring_atoms)
+
+        if has_carbonyl and has_bridge_oxygen:
+            is_in_c_ring = True
+            break
+
+    if not is_in_c_ring:
+        return False
+
+    # FIXED: Removed overly restrictive "O neighbor in same ring" requirement
+    # The original requirement was too strict for vinylic CH in chromen-4-one structures
+    # Now we accept any sp2 or aromatic CH in a valid C-ring (flavonoid core)
+
+    return True
 
 
 def is_c_ring_site(mol, aidx: int) -> bool:
@@ -694,16 +708,12 @@ def _soft_c_ring_candidates(mol: Chem.Mol) -> Set[int]:
 
 def c_ring_membership_atoms(mol: Chem.Mol) -> Set[int]:
     """
-    Return all atom indices in 6-member rings identified as C-rings (independent of H count/hybridization).
-    Basic heuristic: 6-member ring AND (contains oxygen) AND (contains in-ring carbonyl).
-    If no strict matches found, falls back to broader criteria for better test coverage.
-    Note: This replaces historical CH=1-bound C-ring detection, making it reusable for CH2.
+    Strict C-ring: 6-member ring AND contains in-ring oxygen AND in-ring carbonyl.
+    No fallback is applied here.
     """
     try:
         out: Set[int] = set()
         ring_info = mol.GetRingInfo()
-
-        # First try strict criteria
         for ring in ring_info.AtomRings():
             if len(ring) != 6:
                 continue
@@ -712,11 +722,6 @@ def c_ring_membership_atoms(mol: Chem.Mol) -> Set[int]:
             if not _is_carbonyl_in_ring(mol, ring):
                 continue
             out.update(ring)
-
-        # If strict criteria found no rings, use soft fallback
-        if not out:
-            out = _soft_c_ring_candidates(mol)
-
         return out
     except Exception:
         return set()
@@ -766,33 +771,242 @@ def _get_pure_carbon_ring_atoms(mol: Chem.Mol) -> Set[int]:
         return set()
 
 
-def _is_beta_to_carbonyl(mol: Chem.Mol, carbon_idx: int) -> bool:
+def _is_carbonyl_carbon(atom) -> bool:
+    """Check if an atom is a carbonyl carbon (has C=O double bond)."""
+    try:
+        if atom.GetSymbol() != 'C':
+            return False
+        for bond in atom.GetBonds():
+            other_atom = bond.GetOtherAtom(atom)
+            if (other_atom.GetSymbol() == 'O' and
+                bond.GetBondType() == Chem.BondType.DOUBLE):
+                return True
+        return False
+    except Exception:
+        return False
+
+
+def _is_k_to_carbonyl(mol, carbon_idx: int, k: int = 2) -> bool:
+    """
+    Check if a carbon is exactly k bonds away from any carbonyl carbon.
+
+    Args:
+        mol: RDKit molecule
+        carbon_idx: Index of carbon atom to check
+        k: Number of bonds distance (1=alpha, 2=beta, etc.)
+
+    Returns:
+        True if carbon is exactly k bonds from a carbonyl carbon
+    """
+    try:
+        start = mol.GetAtomWithIdx(carbon_idx)
+        if start.GetSymbol() != 'C' or k <= 0:
+            return False
+
+        # k == 1: any neighbor carbon is carbonyl carbon
+        if k == 1:
+            for neighbor in start.GetNeighbors():
+                if neighbor.GetSymbol() == 'C' and _is_carbonyl_carbon(neighbor):
+                    return True
+            return False
+
+        # k == 2: neighbor-of-neighbor carbon is carbonyl carbon
+        if k == 2:
+            for neighbor in start.GetNeighbors():
+                for second_neighbor in neighbor.GetNeighbors():
+                    if (second_neighbor.GetIdx() != carbon_idx and
+                        second_neighbor.GetSymbol() == 'C' and
+                        _is_carbonyl_carbon(second_neighbor)):
+                        return True
+            return False
+
+        # For k > 2: lightweight BFS ignoring hydrogens
+        seen = {carbon_idx}
+        frontier = [carbon_idx]
+        dist = 0
+
+        while frontier and dist < k:
+            next_frontier = []
+            for idx in frontier:
+                atom = mol.GetAtomWithIdx(idx)
+                for neighbor in atom.GetNeighbors():
+                    if neighbor.GetAtomicNum() == 1:  # Skip hydrogens
+                        continue
+                    neighbor_idx = neighbor.GetIdx()
+                    if neighbor_idx in seen:
+                        continue
+                    seen.add(neighbor_idx)
+                    next_frontier.append(neighbor_idx)
+            dist += 1
+            frontier = next_frontier
+
+        if dist != k:
+            return False
+
+        # Check if any atoms at distance k are carbonyl carbons
+        for idx in frontier:
+            atom = mol.GetAtomWithIdx(idx)
+            if atom.GetSymbol() == 'C' and _is_carbonyl_carbon(atom):
+                return True
+        return False
+    except Exception:
+        return False
+
+
+def _is_beta_to_carbonyl(mol: Chem.Mol, carbon_idx: int, allow_alpha_as_beta: bool = False) -> bool:
     """
     Check if a carbon atom is beta (two bonds away) from a carbonyl carbon.
 
     Args:
         mol: RDKit molecule
         carbon_idx: Index of carbon atom to check
+        allow_alpha_as_beta: If True, also accept alpha (1 bond) positions as beta
 
     Returns:
-        True if carbon is beta to any carbonyl
+        True if carbon is beta to any carbonyl (or alpha if allow_alpha_as_beta=True)
     """
     try:
-        carbon_atom = mol.GetAtomWithIdx(carbon_idx)
-        if carbon_atom.GetSymbol() != 'C':
-            return False
+        # Strict beta = exactly two bonds away
+        if _is_k_to_carbonyl(mol, carbon_idx, k=2):
+            return True
 
-        # Look for carbonyls that are exactly 2 bonds away
-        for neighbor in carbon_atom.GetNeighbors():
-            for second_neighbor in neighbor.GetNeighbors():
-                if (second_neighbor.GetIdx() != carbon_idx and
-                    second_neighbor.GetSymbol() == 'C'):
-                    # Check if this carbon is part of a carbonyl
-                    for bond in second_neighbor.GetBonds():
-                        other_atom = bond.GetOtherAtom(second_neighbor)
-                        if (other_atom.GetSymbol() == 'O' and
-                            bond.GetBondType() == Chem.BondType.DOUBLE):
-                            return True
+        # Optional alpha compatibility for legacy behavior
+        if allow_alpha_as_beta:
+            return _is_k_to_carbonyl(mol, carbon_idx, k=1)
+
+        return False
+    except Exception:
+        return False
+
+
+def _strict_c_ring_tuples(mol: Chem.Mol) -> List[Tuple[int, ...]]:
+    """
+    Extract strict C-ring tuples (6-member rings containing both ring oxygen and carbonyl).
+
+    Returns tuples instead of sets to enable ring-based distance calculation.
+
+    Args:
+        mol: RDKit molecule
+
+    Returns:
+        List of ring tuples that satisfy strict C-ring criteria
+    """
+    rings = []
+    try:
+        ring_info = mol.GetRingInfo()
+        for ring in ring_info.AtomRings():
+            if len(ring) != 6:
+                continue
+            if not _ring_has_oxygen(mol, ring):
+                continue
+            if not _is_carbonyl_in_ring(mol, ring):
+                continue
+            rings.append(tuple(ring))
+    except Exception:
+        pass
+    return rings
+
+
+def _ring_min_distance(ring: Tuple[int, ...], a: int, b: int) -> int:
+    """
+    Calculate minimum distance between two atoms within the same ring.
+
+    Uses ring sequence to calculate shortest ring distance:
+    ring_min_distance = min(|i-j|, n - |i-j|)
+
+    Args:
+        ring: Ring as tuple of atom indices
+        a: First atom index
+        b: Second atom index
+
+    Returns:
+        Minimum ring distance, or large number if atoms not in ring
+    """
+    try:
+        n = len(ring)
+        ia = ring.index(a)
+        ib = ring.index(b)
+        d = abs(ia - ib)
+        return d if d <= n - d else n - d
+    except ValueError:
+        return 10**9  # Not in this ring
+
+
+def _is_beta_on_same_c_ring(mol: Chem.Mol, carbon_idx: int, allow_alpha_as_beta: bool = False) -> bool:
+    """
+    Check if a carbon atom is beta (ring distance=2) from a carbonyl carbon within the same C-ring.
+
+    This replaces full-graph distance calculation with same-ring distance to ensure
+    chemically accurate beta detection for flavonoid C-rings.
+
+    Args:
+        mol: RDKit molecule
+        carbon_idx: Index of carbon atom to check
+        allow_alpha_as_beta: If True, also accept alpha (ring distance=1) positions as beta
+
+    Returns:
+        True if carbon is beta to any carbonyl within the same strict C-ring
+    """
+    try:
+        for ring in _strict_c_ring_tuples(mol):
+            if carbon_idx not in ring:
+                continue
+
+            # Find carbonyl carbons within this ring
+            carbonyl_carbons = []
+            for aidx in ring:
+                atom = mol.GetAtomWithIdx(aidx)
+                if atom.GetSymbol() != 'C':
+                    continue
+                # Check if this carbon has C=O double bond
+                for bond in atom.GetBonds():
+                    other_atom = bond.GetOtherAtom(atom)
+                    if (other_atom.GetSymbol() == 'O' and
+                        bond.GetBondType() == Chem.BondType.DOUBLE):
+                        carbonyl_carbons.append(aidx)
+                        break
+
+            if not carbonyl_carbons:
+                continue
+
+            # Check ring distance to any carbonyl carbon
+            for c_idx in carbonyl_carbons:
+                dist = _ring_min_distance(ring, carbon_idx, c_idx)
+                if dist == 2:
+                    return True
+                if allow_alpha_as_beta and dist == 1:
+                    return True
+        return False
+    except Exception:
+        return False
+
+
+def _has_ring_oxygen_neighbor_on_same_c_ring(mol: Chem.Mol, carbon_idx: int) -> bool:
+    """
+    Check if a carbon atom has an oxygen neighbor (ring distance=1) within the same strict C-ring.
+
+    This replaces direct adjacency check with same-ring distance to ensure correct
+    detection when multiple C-rings exist.
+
+    Args:
+        mol: RDKit molecule
+        carbon_idx: Index of carbon atom to check
+
+    Returns:
+        True if carbon has ring distance=1 to oxygen within the same strict C-ring
+    """
+    try:
+        for ring in _strict_c_ring_tuples(mol):
+            if carbon_idx not in ring:
+                continue
+
+            # Find oxygen atoms within this ring
+            for aidx in ring:
+                atom = mol.GetAtomWithIdx(aidx)
+                if atom.GetSymbol() != 'O':
+                    continue
+                if _ring_min_distance(ring, carbon_idx, aidx) == 1:
+                    return True
         return False
     except Exception:
         return False
@@ -826,23 +1040,28 @@ def _has_ring_oxygen_neighbor(mol: Chem.Mol, carbon_idx: int) -> bool:
 # =================================
 
 def c_ring_sp2_CH_sites(mol, masked_atoms: set) -> List[int]:
-    """R2a: Ring aromatic sp2 CH sites in C-rings.
+    """R2a: Ring vinylic sp2 CH sites in C-rings.
 
-    Uses c_ring_membership_atoms() for proper C-ring targeting
-    instead of accepting any ring atoms.
+    Uses strict C-ring detection for flavonoid C-ring targeting, with soft fallback.
+    Requires non-aromatic sp2 CH with exactly 1 hydrogen.
+    Aromatic CH positions are handled by R1 rules.
     """
     try:
         masked = set(masked_atoms or ())
-        # Use proper C-ring detection for flavonoid C-ring targeting
-        c_ring_atoms = c_ring_membership_atoms(mol)
+
+        # Try strict C-ring detection first
+        ring_atoms = set(c_ring_membership_atoms(mol))
+        if not ring_atoms:
+            # Soft fallback for R2a when strict set is empty (e.g., chromen-4-one)
+            ring_atoms = _soft_c_ring_candidates(mol)
 
         out: List[int] = []
-        for idx in c_ring_atoms:
+        for idx in ring_atoms:
             if idx in masked:
                 continue
             a = mol.GetAtomWithIdx(idx)
             if (a.GetSymbol() == "C" and
-                a.GetIsAromatic() and
+                not a.GetIsAromatic() and
                 a.GetHybridization() == Chem.HybridizationType.SP2 and
                 a.GetTotalNumHs() == 1):
                 out.append(idx)
@@ -852,23 +1071,139 @@ def c_ring_sp2_CH_sites(mol, masked_atoms: set) -> List[int]:
 
 
 
-def c_ring_sp3_CH2_flavanone_sites(mol, masked_atoms: set, sugar_cfg: dict | None) -> List[int]:
+def _enumerate_r2b_fallback_sites(mol, masked_atoms: set, sugar_ring_atoms: set) -> List[int]:
+    """
+    Fallback R2b site enumeration for flavanone structures (e.g., naringenin).
+
+    This fallback identifies sp3 CH2 sites based on local environment without relying
+    on strict C-ring labeling or beta-distance requirements.
+
+    Criteria for flavanone C3 position:
+    - sp3 carbon with 2 hydrogens (CH2)
+    - In a 5 or 6-member ring
+    - Has ring oxygen in same ring (chromanone/flavanone oxygen)
+    - Adjacent to (alpha) or near (beta) a carbonyl carbon (distance 1-2 bonds)
+
+    Args:
+        mol: RDKit molecule
+        masked_atoms: Set of atom indices to exclude
+        sugar_ring_atoms: Set of sugar ring atoms to exclude
+
+    Returns:
+        List of atom indices that match fallback R2b criteria
+    """
+    try:
+        sites = []
+        ring_info = mol.GetRingInfo()
+
+        for idx in range(mol.GetNumAtoms()):
+            if idx in masked_atoms or idx in sugar_ring_atoms:
+                continue
+
+            atom = mol.GetAtomWithIdx(idx)
+
+            # Must be sp3 CH2
+            if (atom.GetSymbol() != 'C' or
+                atom.GetHybridization() != Chem.HybridizationType.SP3 or
+                atom.GetTotalNumHs() != 2):
+                continue
+
+            # Must be in a ring (5 or 6-member)
+            if not atom.IsInRing():
+                continue
+
+            # Find rings containing this atom
+            atom_rings = [ring for ring in ring_info.AtomRings() if idx in ring]
+            if not atom_rings:
+                continue
+
+            # Check if any containing ring has oxygen AND carbonyl within 2 bonds
+            for ring in atom_rings:
+                ring_size = len(ring)
+                if ring_size not in (5, 6):
+                    continue
+
+                # Check 1: Does this ring contain oxygen?
+                has_ring_oxygen = any(
+                    mol.GetAtomWithIdx(i).GetSymbol() == 'O'
+                    for i in ring
+                )
+                if not has_ring_oxygen:
+                    continue
+
+                # Check 2: Is atom within 1-2 bonds of a carbonyl carbon?
+                # (This covers both alpha and beta positions)
+                near_carbonyl = False
+
+                # Check direct neighbors (alpha = 1 bond)
+                for neighbor in atom.GetNeighbors():
+                    if _is_carbonyl_carbon(neighbor):
+                        near_carbonyl = True
+                        break
+
+                # If not alpha, check 2-bond neighbors (beta = 2 bonds)
+                if not near_carbonyl:
+                    for neighbor in atom.GetNeighbors():
+                        for second_neighbor in neighbor.GetNeighbors():
+                            if (second_neighbor.GetIdx() != idx and
+                                _is_carbonyl_carbon(second_neighbor)):
+                                near_carbonyl = True
+                                break
+                        if near_carbonyl:
+                            break
+
+                if near_carbonyl:
+                    sites.append(idx)
+                    break  # Found valid ring, no need to check other rings for this atom
+
+        return sites
+    except Exception:
+        return []
+
+
+def c_ring_sp3_CH2_flavanone_sites(mol, masked_atoms: set, sugar_cfg: Optional[dict], rules_cfg: Optional[dict] = None, return_detection: bool = False):
     """R2b: Ring sp3 CH2 sites with dual condition targeting.
 
     Targets sp3 CH2 sites that satisfy either:
     1. Has ring oxygen neighbor (THP, oxygen-containing rings)
     2. Is beta to carbonyl (flavanone C3 position)
 
+    Uses soft fallback for ring detection when strict C-ring criteria find no matches.
     Maintains sugar ring exclusion when sugar masking is enabled.
+
+    Args:
+        mol: RDKit molecule
+        masked_atoms: Set of atom indices to exclude
+        sugar_cfg: Sugar configuration dictionary
+        rules_cfg: Rules configuration dictionary for beta-carbonyl behavior
+        return_detection: If True, return (sites, used_fallback) tuple instead of just sites
+
+    Returns:
+        If return_detection=False: List[int] of site indices
+        If return_detection=True: Tuple[List[int], bool] - (sites, used_fallback)
     """
     try:
         masked = set(masked_atoms or ())
 
-        # Get all ring atoms for initial filtering
-        ring_atoms = set()
-        ring_info = mol.GetRingInfo()
-        for ring in ring_info.AtomRings():
-            ring_atoms.update(ring)
+        # Read configuration for beta-to-carbonyl behavior and fallback
+        allow_alpha_as_beta = False
+        fallback_enable = False  # Default: strict mode (conservative, enable in raw mode)
+        if rules_cfg is not None:
+            r2_config = rules_cfg.get('R2', {})
+            allow_alpha_as_beta = bool(r2_config.get('allow_alpha_as_beta', False))
+
+            # Fallback configuration (P2 enhancement)
+            fallback_cfg = r2_config.get('fallback', {})
+            if isinstance(fallback_cfg, dict):
+                fallback_enable = bool(fallback_cfg.get('enable', False))
+            elif isinstance(fallback_cfg, bool):
+                fallback_enable = fallback_cfg
+
+        # Try strict C-ring detection first
+        ring_atoms = set(c_ring_membership_atoms(mol))
+        if not ring_atoms:
+            # Soft fallback only for R2b when strict set is empty
+            ring_atoms = _soft_c_ring_candidates(mol)
 
         # Compute sugar_ring_atoms only when sugar masking is actually enabled
         sugar_ring_atoms: Set[int] = set()
@@ -887,10 +1222,29 @@ def c_ring_sp3_CH2_flavanone_sites(mol, masked_atoms: set, sugar_cfg: dict | Non
             if (a.GetSymbol() == "C" and
                 a.GetHybridization() == Chem.HybridizationType.SP3 and
                 a.GetTotalNumHs() == 2):
-                # Dual condition: ring oxygen neighbor OR beta to carbonyl
-                if (_has_ring_oxygen_neighbor(mol, idx) or
-                    _is_beta_to_carbonyl(mol, idx)):
+                # Dual condition: ring oxygen neighbor OR beta to carbonyl (same-ring semantics)
+                if (_has_ring_oxygen_neighbor_on_same_c_ring(mol, idx) or
+                    _is_beta_on_same_c_ring(mol, idx, allow_alpha_as_beta)):
                     out.append(idx)
-        return out
+
+        # FALLBACK: If no sites found and fallback is enabled, try flavanone-specific fallback
+        # This handles cases where strict C-ring detection fails or beta distance is too strict
+        used_fallback = False
+        if not out and fallback_enable:
+            LOG.debug("[R2b] Strict enumeration found 0 sites, fallback enabled, trying flavanone structures")
+            out = _enumerate_r2b_fallback_sites(mol, masked, sugar_ring_atoms)
+            if out:
+                used_fallback = True
+                LOG.info("[R2b] Fallback enumeration found %d sites", len(out))
+        elif not out and not fallback_enable:
+            LOG.debug("[R2b] Strict enumeration found 0 sites, but fallback is disabled")
+
+        if return_detection:
+            return (out, used_fallback)
+        else:
+            return out
     except Exception:
-        return []
+        if return_detection:
+            return ([], False)
+        else:
+            return []

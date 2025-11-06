@@ -1,0 +1,27 @@
+# Minimal R6 test case with toluene
+# Purpose: Verify R6 methyl halogenation works with explicit enable=true
+
+rules: [R6]
+k_max: 1
+halogens: [F, Cl]
+
+rules_cfg:
+  R6_methyl:
+    enable: true
+    allowed: [F, Cl]
+    allow_on_methoxy: false       # not relevant for toluene
+    allow_allylic_methyl: false   # toluene is aromatic-adjacent, not affected by this
+
+# Basic settings to minimize other variables
+io: {}
+constraints:
+  per_ring_quota: null
+  min_graph_distance: null
+pruning:
+  enable_symmetry_fold: false
+qc:
+  enable_rdkit_qc: false
+
+# Use sugar mask but should not affect toluene
+sugar_cfg:
+  mode: heuristic

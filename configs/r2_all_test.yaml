@@ -1,0 +1,34 @@
+# Test all R2 sub-rules with naringenin
+halogens: [F]
+rules: [R2]
+k_max: 1
+
+rules_cfg:
+  R2:
+    sp2_CH_in_C_ring: true      # Enable R2a
+    sp3_CH2_flavanone: true     # Enable R2b
+    allow_alpha_as_beta: true
+
+constraints:
+  per_ring_quota: null
+  min_graph_distance: 1
+
+standardize:
+  do_tautomer: false
+
+qc:
+  sanitize_strict: true
+  pains: false
+
+pruning:
+  enable_symmetry_fold: false
+  enable_state_sig: false
+
+sugar_cfg:
+  mode: off
+
+engine_cfg:
+  budget_mode: ops
+
+io:
+  smiles_file: "test_flavanone_only.smi"

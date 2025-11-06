@@ -1,0 +1,67 @@
+# P1 Baseline Configuration for Performance Testing
+# 10 representative flavonoids for k=2 enumeration baseline
+
+name: "p1-baseline-k2"
+description: "Performance baseline with 10 representative flavonoids for k=2 enumeration"
+
+# Input configuration
+input_dir: "data/input"
+output_dir: "data/output/p1-baseline"
+
+# Enumeration parameters
+k_max: 2
+halogens: ["F", "Cl", "Br", "I"]
+rules: ["R1", "R2", "R3", "R4", "R5"]
+
+# Representative flavonoids for baseline testing
+# Selected for structural diversity and enumeration complexity
+baseline_molecules:
+  - name: "quercetin"
+    smiles: "O=c1c(O)c(-c2ccc(O)c(O)c2)oc2cc(O)cc(O)c12"
+  - name: "apigenin"
+    smiles: "O=c1cc(-c2ccc(O)cc2)oc2cc(O)cc(O)c12"
+  - name: "luteolin"
+    smiles: "O=c1cc(-c2ccc(O)c(O)c2)oc2cc(O)cc(O)c12"
+  - name: "kaempferol"
+    smiles: "O=c1c(O)c(-c2ccc(O)cc2)oc2cc(O)cc(O)c12"
+  - name: "myricetin"
+    smiles: "O=c1c(O)c(-c2cc(O)c(O)c(O)c2)oc2cc(O)cc(O)c12"
+  - name: "fisetin"
+    smiles: "O=c1c(O)c(-c2ccc(O)cc2O)oc2cc(O)cc(O)c12"
+  - name: "chrysin"
+    smiles: "O=c1cc(-c2ccccc2)oc2cc(O)cc(O)c12"
+  - name: "galangin"
+    smiles: "O=c1c(O)c(-c2ccccc2)oc2cc(O)cc(O)c12"
+  - name: "morin"
+    smiles: "O=c1c(O)c(-c2cc(O)cc(O)c2)oc2cc(O)cc(O)c12"
+  - name: "epicatechin"
+    smiles: "Oc1cc(O)c2c(c1)O[C@H](c1ccc(O)c(O)c1)[C@H](O)C2"
+
+# Quality control settings
+qc:
+  sanitize_strict: true
+  pains: false
+  
+# Standardization settings  
+standardization:
+  do_tautomer: false
+
+# Constraint settings
+constraints:
+  per_ring_quota: 2
+  min_graph_distance: 2
+  max_per_halogen: null
+
+# Performance target settings
+performance_targets:
+  max_duration_minutes: 15
+  max_memory_gb: 8
+  target_cores: 4
+  
+# Benchmark configuration
+benchmark:
+  warmup_runs: 0
+  repeat_runs: 1
+  record_per_molecule_times: true
+  record_memory_usage: true
+  record_hardware_info: true

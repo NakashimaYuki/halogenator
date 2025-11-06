@@ -1,8 +1,10 @@
 # -*- coding: ascii -*-
 """Reaction SMARTS/SMIRKS templates."""
 
-from typing import Dict
-from rdkit.Chem import rdChemReactions as RXN
+from typing import Dict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from rdkit.Chem import rdChemReactions as RXN
 
 HALOGENS = ("F", "Cl", "Br", "I")
 
@@ -23,8 +25,10 @@ def _r5_smirks(X: str) -> str:
     return "[c,#6:1]-C(=O)[O;H1]>>[#6:1]" + X
 
 
-def build_reactions() -> Dict[str, Dict[str, RXN.ChemicalReaction]]:
+def build_reactions() -> "Dict[str, Dict[str, RXN.ChemicalReaction]]":
     """Build reaction templates from SMIRKS for each halogen."""
+    from rdkit.Chem import rdChemReactions as RXN
+    
     rxns = {"R1": {}, "R3": {}, "R4": {}, "R5": {}}
     
     for X in HALOGENS:

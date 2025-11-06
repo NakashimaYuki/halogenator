@@ -47,9 +47,9 @@ class TestP1R2Sites(unittest.TestCase):
         
         if mol is not None:
             products = list(enumerate_products(benzoquinone_smiles, cfg))
-            
+
             # Should produce fewer R2 products due to carbonyl exclusion
-            r2_products = [p for p in products if p['rule'] == 'R2']
+            r2_products = [p for p in products if p.get('rule_family') == 'R2']
             
             # The exact number depends on implementation, but should be reasonable
             # Main point is that it doesn't crash and produces some valid products
@@ -69,7 +69,7 @@ class TestP1R2Sites(unittest.TestCase):
         products = list(enumerate_products(hydroxy_thp_smiles, cfg))
         
         # Should produce R2 products for the carbon ring sites (R2a/R2b when PR2 enabled by default)
-        r2_products = [p for p in products if p['rule'] in ['R2', 'R2a', 'R2b']]
+        r2_products = [p for p in products if p.get('rule_family') == 'R2']
         self.assertGreater(len(r2_products), 0, "Should produce R2 products for ring carbons with O neighbors")
         
     def test_r2_vs_r1_distinction(self):
@@ -94,7 +94,7 @@ class TestP1R2Sites(unittest.TestCase):
         benzene_products = list(enumerate_products(benzene_smiles, cfg_folded))
         
         benzene_r1 = [p for p in benzene_products if p['rule'] == 'R1']
-        benzene_r2 = [p for p in benzene_products if p['rule'] == 'R2'] 
+        benzene_r2 = [p for p in benzene_products if p.get('rule_family') == 'R2'] 
         
         self.assertGreater(len(benzene_r1), 0, "Benzene should have R1 products")
         self.assertEqual(len(benzene_r2), 0, "Benzene should not have R2 products")
@@ -104,7 +104,7 @@ class TestP1R2Sites(unittest.TestCase):
         hydroxy_thp_products = list(enumerate_products(hydroxy_thp_smiles, cfg_folded))
         
         hydroxy_thp_r1 = [p for p in hydroxy_thp_products if p['rule'] == 'R1']
-        hydroxy_thp_r2 = [p for p in hydroxy_thp_products if p['rule'] in ['R2', 'R2a', 'R2b']]
+        hydroxy_thp_r2 = [p for p in hydroxy_thp_products if p.get('rule_family') == 'R2']
         
         self.assertEqual(len(hydroxy_thp_r1), 0, "Hydroxylated THP should not have R1 products")
         self.assertGreater(len(hydroxy_thp_r2), 0, "Hydroxylated THP should have R2 products")
@@ -118,10 +118,10 @@ class TestP1R2Sites(unittest.TestCase):
             pruning_cfg={'enable_symmetry_fold': False, 'enable_state_sig': False}
         )
         
-        hydroxy_thp_smiles = "OC1CCCCO1" 
+        hydroxy_thp_smiles = "OC1CCCCO1"
         products = list(enumerate_products(hydroxy_thp_smiles, cfg))
-        
-        r2_products = [p for p in products if p['rule'] == 'R2']
+
+        r2_products = [p for p in products if p.get('rule_family') == 'R2']
         
         for product in r2_products:
             history = product.get('substitutions', [])

@@ -1,0 +1,44 @@
+# Small-batch compatibility: 10 flavonoids, k<=2, full halogens, include R6.
+# R2b: compatibility mode (allow alpha=1 as beta).
+
+halogens: [F, Cl, Br, I]
+
+rules: [R1, R2, R3, R4, R5, R6]
+
+k_max: 2
+
+rules_cfg:
+  R2:
+    sp2_CH_in_C_ring: true
+    sp3_CH2_flavanone: true
+    allow_alpha_as_beta: true   # compatibility: alpha=1 or beta=2
+  # Use user-facing "R6" key (will be normalized to R6_methyl internally)
+  R6:
+    enable: true
+    allowed: [F, Cl]            # R6 currently supports F/Cl (keep realistic)
+    allow_on_methoxy: true      # Enable O-CH3 halogenation for flavonoid methoxy groups
+    allow_allylic_methyl: false
+    macro:
+      enable: false
+      labels: [CF3, CCl3]
+
+constraints:
+  per_ring_quota: 2
+  min_graph_distance: 2
+
+standardize:
+  do_tautomer: false
+
+qc:
+  sanitize_strict: true
+  pains: true
+
+pruning:
+  enable_symmetry_fold: true
+  enable_state_sig: true
+
+sugar_cfg:
+  mode: heuristic
+
+io:
+  smiles_file: "out/etcm2000/parents/parents_pick.smi"

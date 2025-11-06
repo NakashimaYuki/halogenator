@@ -1,0 +1,38 @@
+# Debug R6 enumeration for single prenylated flavonoid
+rules: ["R6_methyl"]
+k_max: 1
+halogens: ["F", "Cl"]
+
+rules_cfg:
+  R6_methyl:
+    enable: true
+    allowed: ["F", "Cl"]
+    allow_on_methoxy: true
+    allow_allylic_methyl: true
+    macro:
+      enable: false
+
+constraints:
+  per_ring_quota: 100
+  min_graph_distance: 0
+
+standardize:
+  do_tautomer: false
+
+qc:
+  sanitize_strict: true
+  pains: true
+
+pruning:
+  enable_symmetry_fold: false
+  enable_state_sig: false
+
+engine_cfg:
+  dedup_stage: "pre"
+  dedup_policy: "inchi"
+
+sugar_cfg:
+  mode: "heuristic"
+
+io:
+  smiles_file: "test_single_prenyl.smi"

@@ -1,0 +1,16 @@
+# M1 Scenario A1: Strict baseline (R6 disabled)
+# Purpose: Conservative baseline to observe R1/R3 without methyl interference
+
+rules: [R1, R2, R3, R6_methyl]
+k_max: 2
+halogens: [F, Cl, Br, I]
+
+io:
+  smiles_file: "data/input/methoxy_M1.smi"
+
+engine_cfg:
+  budget_mode: ops
+
+rules_cfg:
+  R6_methyl:
+    enable: false          # Turn off methyl rule to avoid interference

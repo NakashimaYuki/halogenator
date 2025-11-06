@@ -1,0 +1,20 @@
+# M1 Scenario A3: Raw + macro substitution (R6 enabled with CF3/CCl3 macros)
+# Purpose: Verify macro products exist with k_ops=1, k_atoms=3 (k=1) or cumulative k>=2
+
+rules: [R1, R2, R3, R6_methyl]
+k_max: 2
+halogens: [F, Cl, Br, I]
+
+io:
+  smiles_file: "data/input/methoxy_M1.smi"
+
+engine_cfg:
+  budget_mode: ops
+
+rules_cfg:
+  R6_methyl:
+    enable: true
+    allow_on_methoxy: true
+    macro:
+      enable: true
+      labels: [CF3, CCl3]

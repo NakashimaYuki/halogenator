@@ -1,0 +1,76 @@
+# Raw mode configuration for k=2 enumeration with macro substitution
+# This configuration maximizes product generation without chemical constraints
+
+# Enumeration depth
+k_max: 2
+
+# Halogens to use
+halogens: ['F', 'Cl', 'Br', 'I']
+
+# Rules to apply (R6_methyl enables methyl halogenation with macro support)
+rules: ['R1', 'R2', 'R3', 'R4', 'R5', 'R6_methyl']
+
+# Rule-specific configuration
+rules_cfg:
+  R2:
+    sp2_CH_in_C_ring: true        # R2a: sp2 CH in C-ring
+    sp3_CH2_flavanone: true       # R2b: sp3 CH2 in flavanone C-ring
+    allow_alpha_as_beta: false
+    allowed_halogens: ['F', 'Cl', 'Br', 'I']
+
+  R6_methyl:
+    enable: true                   # Enable methyl halogenation
+    allowed: ['F', 'Cl', 'Br', 'I']
+    allow_on_methoxy: true         # Allow halogenation of O-CH3
+    allow_allylic_methyl: true     # Allow halogenation of allylic/vinylic methyls
+    macro:
+      enable: true                 # Enable macro substitution (CF3, CCl3)
+      labels: ['CF3', 'CCl3']
+
+# Engine configuration
+engine:
+  budget_mode: ops                 # Count by operations (k_ops), not atoms
+  emit_legacy_keys: false
+  dedup_stage: pre
+  dedup_policy: auto
+  enable_inchi_dedup: false        # RAW MODE: Disable InChI deduplication
+
+# Constraints configuration
+constraints:
+  enable: false                    # RAW MODE: Disable all constraints
+  per_ring_quota: null
+  min_graph_distance: 0
+  max_per_halogen: null
+
+# Sugar masking configuration
+sugar_cfg:
+  mode: off                        # RAW MODE: Disable sugar masking
+
+# Pruning configuration
+pruning_cfg:
+  enable_symmetry_fold: false      # RAW MODE: Disable symmetry folding
+  enable_state_sig: false
+
+# Symmetry configuration
+symmetry_cfg:
+  compute_on_masked_subgraph: true
+
+# Standardization configuration
+std_cfg:
+  do_tautomer: false
+
+# QC configuration
+qc_cfg:
+  sanitize_strict: true
+  pains: true
+  tautomer_canonicalize: false
+
+# Input/output configuration
+io:
+  smiles_file: "data/input/one_target.smi"
+  outdir: "output/one_flavone_k2_raw"
+  out_structure: "hierarchical"    # Use hierarchical SDF output
+  halogens_order: ['F', 'Cl', 'Br', 'I']
+
+# Random seed for reproducibility
+random_seed: 42

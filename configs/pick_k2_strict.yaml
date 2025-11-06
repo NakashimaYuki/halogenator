@@ -1,0 +1,22 @@
+# k=2 strict mode: all rules R1-R6, F/Cl/Br/I; R6 allows methoxy and allylic methyl
+rules: ["R1","R2","R3","R4","R5","R6_methyl"]
+k_max: 2
+halogens: ["F","Cl","Br","I"]
+
+rules_cfg:
+  R2:
+    sp2_CH_in_C_ring: true
+    sp3_CH2_flavanone: true
+    allow_alpha_as_beta: false
+    allowed_halogens: ["F","Cl","Br","I"]
+  R6_methyl:
+    enable: true
+    allowed: ["F","Cl"]
+    allow_on_methoxy: true
+    allow_allylic_methyl: true
+
+io:
+  smiles_file: "out/etcm2000/parents/parents_pick.smi"
+
+sugar_cfg:
+  mode: "heuristic"

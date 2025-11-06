@@ -1,0 +1,24 @@
+# 8-PN Scenario B1: Strict baseline
+# Purpose: Conservative baseline, R2 should be ~0, R6 may hit allylic methyl
+
+rules: [R1, R2, R3, R6_methyl]
+k_max: 2
+halogens: [F, Cl, Br, I]
+
+io:
+  smiles_file: "data/input/8pn.smi"
+
+engine_cfg:
+  budget_mode: ops
+
+rules_cfg:
+  R2:
+    sp3_CH2_flavanone: true
+    allow_alpha_as_beta: false
+    fallback:
+      enable: false   # Strict: disable fallback
+  R6_methyl:
+    enable: true
+    allow_allylic_methyl: true    # Enable allylic methyl stepwise halogenation
+    macro:
+      enable: false      # Macro not used for allylic methyl

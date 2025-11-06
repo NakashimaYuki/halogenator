@@ -1,0 +1,31 @@
+# Quick test for R6 methyl halogenation - prenylated flavonoid only
+
+halogens: [F]  # Single halogen for quick test
+rules: [R6]    # R6 only
+k_max: 1       # k=1 only for quick test
+
+rules_cfg:
+  R6_methyl:
+    enable: true
+    allowed: [F]
+    allow_on_methoxy: false
+    macro:
+      enable: false
+      labels: [CF3, CCl3]
+
+constraints:
+  per_ring_quota: null  # Remove constraints
+  min_graph_distance: 1
+
+pruning:
+  enable_symmetry_fold: false
+  enable_state_sig: false
+
+sugar_cfg:
+  mode: off  # Disable sugar masking
+
+engine_cfg:
+  budget_mode: ops  # Explicitly set budget mode like in tests
+
+io:
+  smiles_file: "test_simple_methyl.smi"

@@ -7,76 +7,227 @@ on:
     branches: [ main, master, develop ]
 
 jobs:
-  test:
+  # Tier 1: Unit Tests (Fast feedback)
+  unit-tests:
+    name: Unit Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        python-version: ["3.10"]  # Standardized on Python 3.10 for RDKit compatibility
 
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Conda
+    - name: Set up Conda with consistent environment
       uses: conda-incubator/setup-miniconda@v3
       with:
         python-version: ${{ matrix.python-version }}
         miniconda-version: latest
         auto-activate-base: true
         use-mamba: true
-        channels: conda-forge
+        channels: conda-forge,defaults
+        channel-priority: strict
 
-    - name: Install RDKit and dependencies via conda
+    - name: Install RDKit and dependencies via conda-forge
       shell: bash -l {0}
       run: |
-        conda install -c conda-forge rdkit pandas pyarrow pyyaml -y
+        # Pin RDKit and core dependencies for stability
+        mamba install rdkit=2023.09.* pandas=2.* pyarrow=14.* pyyaml=6.* openpyxl=3.* -y
 
     - name: Install package
       shell: bash -l {0}
       run: |
         pip install -e .
+        
+    - name: Print dependency information
+      shell: bash -l {0}
+      run: |
+        echo "=== Python and RDKit Versions ==="
+        python -c "import sys; print(f'Python: {sys.version}')"
+        python -c "import rdkit; print(f'RDKit: {rdkit.__version__}')"
 
     - name: Make scripts executable
       run: |
         chmod +x scripts/check_ascii.sh
+        chmod +x scripts/run_test_tier.py
 
-    - name: ASCII compliance check
+    - name: Install pre-commit
       shell: bash -l {0}
       run: |
-        ./scripts/check_ascii.sh
+        pip install pre-commit
 
-    - name: Run unit tests
+    - name: Run pre-commit hooks
       shell: bash -l {0}
       run: |
-        python -m unittest discover -v
+        pre-commit run --all-files
 
-    - name: Run schema tests
+    - name: Validate README JSON fragments
       shell: bash -l {0}
       run: |
-        python -m unittest tests.test_schema_records -v
+        python -c "
+import re
+import json
 
-  integration:
+# Read README.md
+with open('README.md', 'r') as f:
+    content = f.read()
+
+# Find all JSON code blocks marked with json
+json_blocks = re.findall(r'```json\n(.*?)```', content, re.DOTALL)
+
+print(f'Found {len(json_blocks)} JSON code blocks in README')
+
+# Validate each JSON block
+invalid_count = 0
+for i, block in enumerate(json_blocks):
+    try:
+        json.loads(block.strip())
+        print(f'? JSON block {i+1}: Valid')
+    except json.JSONDecodeError as e:
+        print(f'? JSON block {i+1}: Invalid - {e}')
+        print(f'  Content: {block[:100]}...')
+        invalid_count += 1
+
+if invalid_count > 0:
+    print(f'ERROR: {invalid_count} invalid JSON blocks found')
+    exit(1)
+else:
+    print('All JSON blocks are valid!')
+"
+
+    - name: Install coverage tools
+      shell: bash -l {0}
+      run: |
+        pip install coverage pyflakes
+
+    - name: Run unit tests with coverage
+      shell: bash -l {0}
+      run: |
+        # Run tests with coverage
+        coverage run -m unittest discover tests -v
+        coverage xml
+        coverage report
+
+    - name: Check coverage threshold
+      shell: bash -l {0}
+      run: |
+        # Get coverage threshold from environment or use default
+        COVERAGE_MIN="${COVERAGE_MIN:-75}"
+        echo "Minimum coverage threshold: ${COVERAGE_MIN}%"
+
+        # Extract coverage percentage from report
+        COVERAGE=$(coverage report | tail -1 | awk '{print $4}' | sed 's/%//')
+        echo "Actual coverage: ${COVERAGE}%"
+
+        # Compare coverage with threshold
+        if [ "${COVERAGE%.*}" -lt "$COVERAGE_MIN" ]; then
+          echo "ERROR: Coverage ${COVERAGE}% is below threshold ${COVERAGE_MIN}%"
+          exit 1
+        else
+          echo "? Coverage ${COVERAGE}% meets threshold ${COVERAGE_MIN}%"
+        fi
+
+    - name: Run static code analysis
+      shell: bash -l {0}
+      continue-on-error: true
+      run: |
+        echo "=== Running pyflakes on source code ==="
+        echo "Note: This step provides informational feedback and does not block CI"
+
+        # Run pyflakes and capture results
+        if python -m pyflakes src tests > pyflakes_report.txt 2>&1; then
+          echo "? No pyflakes issues found"
+        else
+          echo "? Pyflakes found some issues:"
+          cat pyflakes_report.txt | head -20
+          echo ""
+          echo "Total issues found: $(wc -l < pyflakes_report.txt)"
+          echo "This is informational only and does not fail the build"
+        fi
+
+    - name: Run fallback unit test tier (legacy)
+      shell: bash -l {0}
+      run: |
+        python scripts/run_test_tier.py unit -v
+
+    - name: Check for comprehensive test coverage
+      shell: bash -l {0}
+      run: |
+        echo "=== Comprehensive Test Coverage Check ==="
+
+        # Count test files
+        TEST_FILES=$(find tests/ -name "test_*.py" | wc -l)
+        echo "Total test files: $TEST_FILES"
+
+        # Check for critical test categories
+        echo "Checking critical test categories..."
+
+        # Core functionality tests
+        ls tests/test_*schema* tests/test_*cli* tests/test_*report* 2>/dev/null || echo "WARNING: Missing core functionality tests"
+
+        # QA and warnings tests (from our improvements)
+        ls tests/test_*warnings* tests/test_*metadata* tests/test_*truncation* 2>/dev/null || echo "WARNING: Missing QA/warnings tests"
+
+        # Integration tests
+        ls tests/test_*integration* tests/test_*e2e* 2>/dev/null || echo "Note: Integration tests may be in separate tier"
+
+        # Performance/regression tests
+        ls tests/test_*consistency* tests/test_*regression* 2>/dev/null || echo "Note: Regression tests may be implicit"
+
+        echo "=== Test coverage validation complete ==="
+
+        if [ "$TEST_FILES" -lt 10 ]; then
+            echo "?  Only $TEST_FILES test files found (expected at least 10)"
+            echo "Note: Coverage threshold (${COVERAGE_MIN:-75}%) is the primary quality gate"
+            echo "This file count check is informational - coverage gates ensure quality"
+            if [ "${STRICT_TEST_FILE_COUNT:-false}" = "true" ]; then
+                echo "ERROR: STRICT_TEST_FILE_COUNT=true and file count check failed"
+                exit 1
+            fi
+        else
+            echo "? Adequate test file count: $TEST_FILES"
+        fi
+
+  # Tier 2: Integration Tests (Workflow validation)
+  integration-tests:
+    name: Integration Tests
     runs-on: ubuntu-latest
-    needs: test
+    needs: unit-tests
+    timeout-minutes: 15
     continue-on-error: true
     if: github.event_name == 'pull_request' || contains(github.event.head_commit.message, '[run-integration]')
     
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Conda  
+    - name: Set up Conda with consistent environment
       uses: conda-incubator/setup-miniconda@v3
       with:
         python-version: "3.10"
         miniconda-version: latest
         auto-activate-base: true
         use-mamba: true
-        channels: conda-forge
+        channels: conda-forge,defaults
+        channel-priority: strict
 
-    - name: Install dependencies
+    - name: Install dependencies via conda-forge
       shell: bash -l {0}
       run: |
-        conda install -c conda-forge rdkit pandas pyarrow pyyaml -y
+        # Pin RDKit and core dependencies for stability
+        mamba install rdkit=2023.09.* pandas=2.* pyarrow=14.* pyyaml=6.* openpyxl=3.* -y
         pip install -e .
+        
+    - name: Print dependency information
+      shell: bash -l {0}
+      run: |
+        echo "=== Python and RDKit Versions ==="
+        python -c "import sys; print(f'Python: {sys.version}')"
+        python -c "import rdkit; print(f'RDKit: {rdkit.__version__}')"
+
+    - name: Make scripts executable
+      run: |
+        chmod +x scripts/run_test_tier.py
 
     - name: Create test input files
       shell: bash -l {0}
@@ -86,31 +237,43 @@ jobs:
         echo -e "CCN\tethylamine" >> data/input/rule_probes.smi
         echo -e "c1ccc(C(=O)O)cc1\tbenzoic_acid" >> data/input/rule_probes.smi
 
-    - name: Run integration tests
+    - name: Run integration test tier
       shell: bash -l {0}
       run: |
-        HALO_INTEGRATION=1 python -m unittest tests.test_subset_consistency -v
+        python scripts/run_test_tier.py integration -v
 
+  # Tier 3: Demo/End-to-End Tests
   p0-demo:
+    name: P0 Demo Workflow
     runs-on: ubuntu-latest
-    needs: test
+    needs: unit-tests
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Conda
+      - name: Set up Conda with consistent environment
         uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: "3.10"
           miniconda-version: latest
           auto-activate-base: true
           use-mamba: true
-          channels: conda-forge
+          channels: conda-forge,defaults
+          channel-priority: strict
 
-      - name: Install RDKit & dependencies
+      - name: Install RDKit & dependencies via conda-forge
         shell: bash -l {0}
         run: |
-          conda install -c conda-forge rdkit pandas pyarrow pyyaml -y
+          # Pin RDKit and core dependencies for stability
+          mamba install rdkit=2023.09.* pandas=2.* pyarrow=14.* pyyaml=6.* openpyxl=3.* -y
           pip install -e .
+          
+      - name: Print dependency information
+        shell: bash -l {0}
+        run: |
+          echo "=== Python and RDKit Versions ==="
+          python -c "import sys; print(f'Python: {sys.version}')"
+          python -c "import rdkit; print(f'RDKit: {rdkit.__version__}')"
 
       - name: Validate 10-flavonoids baseline
         shell: bash -l {0}

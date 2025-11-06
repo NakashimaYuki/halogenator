@@ -1,0 +1,55 @@
+# Final compatibility configuration - R2b allows alpha=1 as beta, full rules R1-R6, full halogens
+# Proper R6_methyl structure with complete macro configuration
+
+halogens: [F, Cl, Br, I]
+
+rules:
+  - R1
+  - R2
+  - R3
+  - R4
+  - R5
+  - R6
+
+k_max: 2
+
+rules_cfg:
+  R1: {}
+  R2:
+    sp2_CH_in_C_ring: true       # R2a
+    sp3_CH2_flavanone: true      # R2b
+    allow_alpha_as_beta: true    # compat: alpha=1 allowed as beta
+  R3: {}
+  R4: {}
+  R5: {}
+  R6_methyl:
+    enable: true
+    allowed: [F, Cl, Br, I]
+    allow_on_methoxy: false
+    macro:
+      enable: false
+      labels: [CF3, CCl3]
+
+constraints:
+  per_ring_quota: 2
+  min_graph_distance: 2
+
+standardize:
+  do_tautomer: false
+
+qc:
+  sanitize_strict: true
+  pains: true
+
+pruning:
+  enable_symmetry_fold: true
+  enable_state_sig: true
+
+sugar_cfg:
+  mode: heuristic
+
+engine_cfg:
+  budget_mode: ops
+
+io:
+  smiles_file: "out/etcm2000/parents/parents_pick_named.smi"

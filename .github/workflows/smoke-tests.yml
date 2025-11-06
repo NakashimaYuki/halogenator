@@ -1,0 +1,258 @@
+# -*- coding: ascii -*-
+name: Smoke Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  smoke-basic:
+    name: Basic Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python (without conda)
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+        
+    - name: Install minimal dependencies for smoke tests
+      run: |
+        pip install pandas pyyaml
+        
+    - name: Install package in development mode
+      run: |
+        pip install -e .
+        
+    - name: Test basic imports
+      run: |
+        python -c "import src.halogenator.cli; print('CLI module imports OK')"
+        python -c "import src.halogenator.io_utils; print('IO utils imports OK')"
+        python -c "import src.halogenator.schema; print('Schema module imports OK')"
+        python -c "import src.halogenator.report; print('Report module imports OK')"
+        
+    - name: Test CLI help commands
+      run: |
+        python -m halogenator.cli --help
+        python -m halogenator.cli ingest --help
+        python -m halogenator.cli k1 --help
+        python -m halogenator.cli report --help
+        python -m halogenator.cli enum --help
+        python -m halogenator.cli benchmark --help
+        python -m halogenator.cli compare --help
+        
+    - name: Test schema validation
+      run: |
+        python -c "
+        from src.halogenator.schema import validate_products_records
+        test_record = {'smiles': 'CCO', 'parent_smiles': 'CC', 'k': 1}
+        result = validate_products_records([test_record])
+        print(f'Schema validation test: {result}')
+        "
+        
+    - name: Test basic report functions (without RDKit)
+      run: |
+        python -c "
+        from src.halogenator.report import make_unified_parent_key
+        key = make_unified_parent_key('CCO')
+        print(f'Parent key generation test: {key}')
+        assert key.startswith('SMI:'), 'Should generate SMI key without RDKit'
+        "
+
+  smoke-with-rdkit:
+    name: Smoke Tests with RDKit
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Conda environment
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        python-version: "3.10"
+        miniconda-version: latest
+        auto-activate-base: true
+        use-mamba: true
+        channels: conda-forge,defaults
+        channel-priority: strict
+        
+    - name: Install RDKit and minimal dependencies
+      shell: bash -l {0}
+      run: |
+        mamba install rdkit=2023.09.* pandas=2.* pyyaml=6.* -y
+        
+    - name: Install package
+      shell: bash -l {0}
+      run: |
+        pip install -e .
+        
+    - name: Test RDKit-dependent functionality
+      shell: bash -l {0}
+      run: |
+        python -c "
+        from src.halogenator.report import make_unified_parent_key_with_metadata
+        key, meta = make_unified_parent_key_with_metadata('CCO')
+        print(f'RDKit parent key test: {key}, metadata: {meta}')
+        assert meta['rdkit_available'], 'RDKit should be available'
+        "
+        
+    - name: Test basic enumeration (single molecule)
+      shell: bash -l {0}
+      run: |
+        python -c "
+        from src.halogenator.enumerate_k import enumerate_products, EnumConfig
+        cfg = EnumConfig(k_max=1, halogens=('F',))
+        products = list(enumerate_products('c1ccccc1', cfg))
+        print(f'Basic enumeration test: {len(products)} products')
+        assert len(products) > 0, 'Should generate at least one product'
+        "
+        
+    - name: Test constraint validation
+      shell: bash -l {0}
+      run: |
+        python -c "
+        from src.halogenator.constraints import accept
+        from rdkit import Chem
+        mol = Chem.MolFromSmiles('CCO')
+        ok, violations = accept(mol, [], {})
+        print(f'Constraint validation test: ok={ok}, violations={violations}')
+        assert ok, 'Empty constraints should pass'
+        "
+
+  smoke-performance:
+    name: Performance Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [smoke-basic, smoke-with-rdkit]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Conda environment
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        python-version: "3.10"
+        miniconda-version: latest
+        auto-activate-base: true
+        use-mamba: true
+        channels: conda-forge,defaults
+        channel-priority: strict
+        
+    - name: Install dependencies
+      shell: bash -l {0}
+      run: |
+        mamba install rdkit=2023.09.* pandas=2.* pyyaml=6.* -y
+        pip install -e .
+        
+    - name: Test benchmark functionality
+      shell: bash -l {0}
+      run: |
+        python -m halogenator.cli benchmark --smiles "c1ccccc1" --k-max 1 --output-dir smoke_benchmark
+        ls -la smoke_benchmark/
+        echo "Benchmark smoke test completed"
+        
+    - name: Test CSV comparison functionality
+      shell: bash -l {0}
+      run: |
+        # Create test CSV files
+        echo "molecule,count" > test1.csv
+        echo "benzene,5" >> test1.csv
+        echo "molecule,count" > test2.csv
+        echo "benzene,6" >> test2.csv
+        
+        python -m halogenator.cli compare test1.csv test2.csv --output-dir smoke_comparison
+        ls -la smoke_comparison/
+        echo "CSV comparison smoke test completed"
+
+  smoke-integration:
+    name: Integration Smoke Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    needs: smoke-performance
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Conda environment
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        python-version: "3.10"
+        miniconda-version: latest
+        auto-activate-base: true
+        use-mamba: true
+        channels: conda-forge,defaults
+        channel-priority: strict
+        
+    - name: Install dependencies
+      shell: bash -l {0}
+      run: |
+        mamba install rdkit=2023.09.* pandas=2.* pyarrow=14.* pyyaml=6.* -y
+        pip install -e .
+        
+    - name: Create minimal test data
+      shell: bash -l {0}
+      run: |
+        mkdir -p smoke_test_data
+        echo -e "c1ccccc1\tbenzene" > smoke_test_data/parents.smi
+        echo -e "CCO\tethanol" >> smoke_test_data/parents.smi
+        
+    - name: Test P0 workflow (k=1 + report)
+      shell: bash -l {0}
+      run: |
+        # Create minimal config
+        cat > smoke_p0.yaml << EOF
+        halogens: [F]
+        rules: [R1]
+        standardize:
+          do_tautomer: false
+        qc:
+          sanitize_strict: true
+          pains: false
+        io:
+          smiles_file: smoke_test_data/parents.smi
+          products_sdf: smoke_test_data/products_k1.sdf
+          products_table: smoke_test_data/products_k1.parquet
+          summary_csv: smoke_test_data/summary_k1.csv
+        EOF
+        
+        # Run k1 enumeration
+        python -m halogenator.cli k1 -c smoke_p0.yaml --subset all --outdir smoke_test_data
+        
+        # Generate report  
+        python -m halogenator.cli report -c smoke_p0.yaml --subset all --outdir smoke_test_data
+        
+        # Verify outputs
+        ls -la smoke_test_data/
+        echo "=== Summary preview ==="
+        head -5 smoke_test_data/summary_k1.csv
+        
+    - name: Test P1 workflow (k=2 + constraints)
+      shell: bash -l {0}
+      run: |
+        # Create P1 config
+        cat > smoke_p1.yaml << EOF
+        halogens: [F, Cl]
+        rules: [R1, R3]
+        k_max: 2
+        constraints:
+          per_ring_quota: 2
+          min_graph_distance: 2
+        io:
+          smiles_file: smoke_test_data/parents.smi
+          products_table: smoke_test_data/products_k2.parquet
+          summary_csv: smoke_test_data/summary_k2.csv
+        EOF
+        
+        # Run P1 enumeration
+        python -m halogenator.cli enum -c smoke_p1.yaml --k 2 --outdir smoke_test_data
+        
+        # Verify outputs
+        echo "=== P1 outputs ==="
+        ls -la smoke_test_data/products_k2.parquet
+        echo "P1 integration smoke test completed"

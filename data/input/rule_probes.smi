@@ -1,2 +1,4 @@
+Cc1ccccc1	toluene
+c1ccc(O)cc1	phenol
 CCN	ethylamine
-c1ccc(cc1)C(=O)O	benzoic_acid
+c1ccc(C(=O)O)cc1	benzoic_acid

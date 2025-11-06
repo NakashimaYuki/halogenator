@@ -2,14 +2,17 @@
 """Molecule standardization utilities."""
 
 from typing import Optional
-from rdkit import Chem
-from rdkit.Chem import inchi
-from rdkit.Chem.MolStandardize import rdMolStandardize
 
 
-def std_from_smiles(smi: str, do_tautomer: bool = False) -> Optional[Chem.Mol]:
+def std_from_smiles(smi: str, do_tautomer: bool = False):
     """Standardize molecule from SMILES using rdMolStandardize."""
     if smi is None:
+        return None
+    
+    try:
+        from rdkit import Chem
+        from rdkit.Chem.MolStandardize import rdMolStandardize
+    except Exception:
         return None
     
     try:
@@ -33,7 +36,7 @@ def std_from_smiles(smi: str, do_tautomer: bool = False) -> Optional[Chem.Mol]:
             try:
                 te = rdMolStandardize.TautomerEnumerator()
                 mol = te.Canonicalize(mol)
-            except:
+            except Exception:
                 # If tautomer canonicalization fails, continue without it
                 pass
         
@@ -43,8 +46,47 @@ def std_from_smiles(smi: str, do_tautomer: bool = False) -> Optional[Chem.Mol]:
         return None
 
 
-def to_inchikey(mol: Chem.Mol) -> str:
+def strip_isotopes_and_props(mol):
+    """Create a copy of molecule with isotopes and atom mappings removed for stable InChIKey generation.
+
+    P0 STABILITY FIX: Ensures consistent InChIKey generation by removing isotope labels
+    and atom mappings that can vary between equivalent molecules.
+    """
+    try:
+        from rdkit import Chem
+        dm = Chem.Mol(mol)
+        for atom in dm.GetAtoms():
+            if atom.GetIsotope():
+                atom.SetIsotope(0)
+            atom.SetAtomMapNum(0)
+        dm.ClearComputedProps()
+        Chem.SanitizeMol(dm)
+        return dm
+    except Exception:
+        return mol
+
+def to_inchikey_sanitized(mol) -> str:
+    """Convert molecule to InChIKey with isotopes and mappings stripped for consistency."""
+    try:
+        from rdkit.Chem import inchi
+        cleaned_mol = strip_isotopes_and_props(mol)
+        inchi_str = inchi.MolToInchi(cleaned_mol)
+        if inchi_str:
+            key = inchi.InchiToInchiKey(inchi_str)
+            if key:
+                return key
+    except Exception:
+        pass
+    return None
+
+def to_inchikey(mol) -> str:
     """Convert molecule to InChIKey, fallback to canonical SMILES."""
+    try:
+        from rdkit import Chem
+        from rdkit.Chem import inchi
+    except Exception:
+        return "UNKNOWN"
+
     try:
         # Try InChI first
         inchi_str = inchi.MolToInchi(mol)
@@ -52,11 +94,11 @@ def to_inchikey(mol: Chem.Mol) -> str:
             key = inchi.InchiToInchiKey(inchi_str)
             if key:
                 return key
-    except:
+    except Exception:
         pass
     
     # Fallback to canonical SMILES
     try:
         return Chem.MolToSmiles(mol, canonical=True)
-    except:
+    except Exception:
         return "UNKNOWN"

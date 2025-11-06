@@ -1,0 +1,39 @@
+# R6 diagnostic configuration - minimal setup to test CLI pathway R6 -> R6_methyl
+# Only R6 enabled, simple toluene substrate, no constraints
+
+halogens: [F]  # Single halogen for focused testing
+rules: [R6]    # Test if CLI correctly routes R6 to R6_methyl
+k_max: 1       # k=1 for single substitution testing
+
+rules_cfg:
+  R6_methyl:
+    enable: true
+    allowed: [F]
+    allow_on_methoxy: false
+    macro:
+      enable: false
+      labels: [CF3, CCl3]
+
+constraints:
+  per_ring_quota: null    # Remove all constraints
+  min_graph_distance: 1
+
+standardize:
+  do_tautomer: false
+
+qc:
+  sanitize_strict: true
+  pains: false
+
+pruning:
+  enable_symmetry_fold: false  # Disable all pruning
+  enable_state_sig: false
+
+sugar_cfg:
+  mode: off  # Disable sugar masking
+
+engine_cfg:
+  budget_mode: ops
+
+io:
+  smiles_file: "data/input/toluene.smi"

@@ -20,9 +20,20 @@ Heuristic Rules for Sugar Identification:
 
 import logging
 from typing import Set, Dict, Any, List, Tuple
+from dataclasses import dataclass
 from .chem_compat import Chem
 
 LOG = logging.getLogger(__name__)
+
+
+@dataclass
+class SugarRingEvidence:
+    """Structured evidence for sugar ring evaluation."""
+    ring: Tuple[int, ...]
+    ring_size: int
+    exocyclic_o_count_single_bond: int
+    has_cglyco_evidence: bool
+    score: float
 
 
 def _get_default_sugar_cfg() -> Dict[str, Any]:
@@ -73,7 +84,8 @@ def get_sugar_mask_with_full_status(mol, mode: str = 'heuristic', sugar_cfg: Dic
         sugar_cfg = merged_cfg
 
     if mode == 'off':
-        return set(), False, {}
+        LOG.debug("[sugar_mask] mode='off' - returning empty mask (no sugar protection)")
+        return set(), False, {'mode': 'off', 'mask_size': 0}
 
     if mode == 'sru':
         # Try SRU service first, fallback to heuristic
@@ -87,28 +99,68 @@ def get_sugar_mask_with_full_status(mol, mode: str = 'heuristic', sugar_cfg: Dic
     if mode == 'heuristic':
         mask, degraded = _get_sugar_mask_heuristic(mol, sugar_cfg)
 
-        # Collect detailed status information for degraded masking
-        status_metadata = {}
-        if degraded:
-            try:
+        # Collect detailed audit information for both main path and fallback
+        audit = {}
+        try:
+            if not degraded:
+                # Main path - populate audit with main scoring information
+                audit['path'] = 'main'
+
+                # Find sugar rings and get scoring details for audit
+                evidences = _find_sugar_rings(mol, sugar_cfg)
+                if evidences:
+                    # Main path success with sugar rings found
+                    audit['accepted_via_score'] = True
+                    # Use best scoring evidence for audit information
+                    best_evidence = evidences[0]  # Already sorted by score descending
+                    audit['ring_size'] = best_evidence.ring_size
+                    audit['exocyclic_O_count_single_bond'] = best_evidence.exocyclic_o_count_single_bond
+                    audit['has_cglyco_evidence'] = best_evidence.has_cglyco_evidence
+                    audit['ring_score'] = best_evidence.score
+                else:
+                    # Main path but no sugar rings found - no acceptance via scoring
+                    audit['accepted_via_score'] = False
+
+            else:
+                # Fallback path - populate audit with fallback information
+                audit['path'] = 'fallback'
+                audit['accepted_via_score'] = False
+
                 # Re-run degraded analysis to get detailed info
                 _, _, reasons = _perform_degraded_masking(mol, sugar_cfg)
-                status_metadata['degraded_reason'] = reasons
+                audit['degraded_reason'] = reasons
 
                 # Count fallback rings
                 fallback_rings = _find_sugar_like_oxygen_rings_fallback(mol, sugar_cfg)
-                status_metadata['fallback_ring_count'] = len(fallback_rings)
+                audit['fallback_ring_count'] = len(fallback_rings)
+
+                # Get best evidence from fallback rings
+                if fallback_rings:
+                    best_fallback_ring = fallback_rings[0]
+                    audit['ring_size'] = len(best_fallback_ring)
+                    audit['exocyclic_O_count_single_bond'] = _count_exocyclic_oxygens_single_bond(mol, best_fallback_ring)
+                    audit['has_cglyco_evidence'] = _has_c_glycoside_pattern(mol, best_fallback_ring)
 
                 # Count C-glycoside candidates and collect audit statistics
                 cglyco_atoms, cglyco_audit = _detect_c_glycoside_topo(mol, sugar_cfg)
-                status_metadata['cglyco_candidates_count'] = len(cglyco_atoms)
-                status_metadata['cglyco_audit'] = cglyco_audit
+                audit['cglyco_candidates_count'] = len(cglyco_atoms)
+                audit['cglyco_audit'] = cglyco_audit
 
-            except Exception as e:
-                LOG.debug(f"Failed to collect degraded status metadata: {e}")
-                status_metadata = {'degraded_reason': ['unknown'], 'fallback_ring_count': 0, 'cglyco_candidates_count': 0}
+        except Exception as e:
+            LOG.debug(f"Failed to collect audit metadata: {e}")
+            # Provide minimal audit information on error
+            audit = {
+                'path': 'fallback' if degraded else 'main',
+                'accepted_via_score': not degraded,
+                'degraded_reason': ['audit_error'] if degraded else [],
+                'exocyclic_O_count_single_bond': 0,
+                'has_cglyco_evidence': False
+            }
 
-        return mask, degraded, status_metadata
+        # Add acceptance information to audit (backward compatible change)
+        audit['accepted'] = bool(mask)
+
+        return mask, degraded, audit
 
     LOG.warning(f"Unknown sugar masking mode: {mode}, using 'off'")
     return set(), False, {}
@@ -132,6 +184,34 @@ def get_sugar_mask_with_status(mol, mode: str = 'heuristic', sugar_cfg: Dict[str
     """
     mask, degraded, _ = get_sugar_mask_with_full_status(mol, mode, sugar_cfg)
     return mask, degraded
+
+
+def get_sugar_mask_status(mol, mode: str = 'heuristic', sugar_cfg: Dict[str, Any] = None) -> Tuple[Set[int], bool, Dict[str, Any]]:
+    """
+    Get set of atom indices to mask with acceptance semantics and full audit.
+
+    Args:
+        mol: RDKit molecule object
+        mode: Masking strategy
+            - 'off': No masking (empty set)
+            - 'heuristic': Rule-based sugar identification
+            - 'sru': External SRU service (fallback to heuristic if unavailable)
+        sugar_cfg: Sugar configuration dictionary with detail switches
+
+    Returns:
+        Tuple of (masked_atom_indices, accepted_flag, audit_dict)
+        accepted_flag is True if sugar was accepted (either main path or fallback)
+        audit_dict contains detailed acceptance and scoring information
+    """
+    mask, degraded, audit = get_sugar_mask_with_full_status(mol, mode=mode, sugar_cfg=sugar_cfg)
+    accepted = bool(mask)
+
+    # Ensure audit has required keys for new API
+    audit.setdefault('accepted', accepted)
+    audit.setdefault('accepted_via_score', (not degraded) and accepted)
+    audit.setdefault('path', 'main' if not degraded else 'fallback')
+
+    return mask, accepted, audit
 
 
 def get_sugar_mask(mol, mode: str = 'heuristic', sugar_cfg: Dict[str, Any] = None) -> Set[int]:
@@ -221,10 +301,10 @@ def compute_sugar_audit_fields(mol, mask_atoms: Set[int], sugar_cfg: Dict[str, A
         if sugar_cfg is None:
             sugar_cfg = _get_default_sugar_cfg()
 
-        # Find sugar rings
-        sugar_rings = _find_sugar_rings(mol, sugar_cfg)
+        # Find sugar rings with evidence
+        evidences = _find_sugar_rings(mol, sugar_cfg)
 
-        # Detect C-glycoside patterns and compute observation fields on best scoring ring
+        # Use best evidence for observation fields
         is_c_glycoside_like = False
         best_score = 0.0
         best_ring = None
@@ -232,72 +312,16 @@ def compute_sugar_audit_fields(mol, mask_atoms: Set[int], sugar_cfg: Dict[str, A
         best_ring_exo_o = 0
         best_ring_has_cglyco = False
 
-        # Local scorer replicating main scoring to capture score for audit
-        def _score_ring(ring_tuple):
-            score = 0.0
-            ring_size = len(ring_tuple)
-            if ring_size == 6:
-                score += 2.0
-            elif ring_size == 5:
-                score += 1.0
-
-            # Exactly 1 ring oxygen required
-            ring_oxygens = 0
-            for aidx in ring_tuple:
-                a = mol.GetAtomWithIdx(aidx)
-                if a.GetSymbol() == 'O':
-                    ring_oxygens += 1
-            if ring_oxygens != 1:
-                return -1.0, 0, False  # disqualify
-
-            # No inner carbonyl
-            if _has_inner_carbonyl(mol, ring_tuple):
-                return -1.0, 0, False
-            else:
-                score += 2.0
-
-            # SP3 ratio scoring
-            sp3_count = 0
-            total_carbons = 0
-            for aidx in ring_tuple:
-                a = mol.GetAtomWithIdx(aidx)
-                if a.GetSymbol() == 'C':
-                    total_carbons += 1
-                    if a.GetHybridization() == Chem.HybridizationType.SP3:
-                        sp3_count += 1
-            if total_carbons > 0:
-                sp3_ratio = sp3_count / total_carbons
-                if ring_size == 5:
-                    threshold = sugar_cfg.get('sp3_threshold_5_ring', 0.4)
-                    if sp3_ratio >= threshold:
-                        score += min(3.0, (sp3_ratio - threshold) / (1.0 - threshold) * 3.0)
-                elif ring_size == 6:
-                    threshold = sugar_cfg.get('sp3_threshold_6_ring', 0.5)
-                    if sp3_ratio >= threshold:
-                        score += min(3.0, (sp3_ratio - threshold) / (1.0 - threshold) * 3.0)
-
-            # Exocyclic oxygens (single bonds only)
-            exo_o = _count_exocyclic_oxygens_single_bond(mol, ring_tuple)
-            score += min(4.0, exo_o * 1.0)
-
-            # C-glycoside topology
-            has_cglyco = _has_c_glycoside_pattern(mol, ring_tuple)
-            if has_cglyco:
-                score += 2.0
-
-            return score, exo_o, has_cglyco
-
-        for ring in sugar_rings:
-            ring_score, exo_o_cnt, has_cglyco = _score_ring(ring)
+        for evidence in evidences:
             # Track any cglyco evidence overall
-            if has_cglyco:
+            if evidence.has_cglyco_evidence:
                 is_c_glycoside_like = True
-            if ring_score > best_score:
-                best_score = ring_score
-                best_ring = ring
-                best_ring_size = len(ring)
-                best_ring_exo_o = exo_o_cnt
-                best_ring_has_cglyco = has_cglyco
+            if evidence.score > best_score:
+                best_score = evidence.score
+                best_ring = evidence.ring
+                best_ring_size = evidence.ring_size
+                best_ring_exo_o = evidence.exocyclic_o_count_single_bond
+                best_ring_has_cglyco = evidence.has_cglyco_evidence
 
         # Count exocyclic oxygens in mask
         exocyclic_o_count = 0
@@ -317,12 +341,12 @@ def compute_sugar_audit_fields(mol, mask_atoms: Set[int], sugar_cfg: Dict[str, A
 
         return {
             'sugar_mask_atoms': sorted(list(mask_atoms)),
-            'sugar_rings': [list(ring) for ring in sugar_rings],
+            'sugar_rings': [list(evidence.ring) for evidence in evidences],
             'masked_oh_count': exocyclic_o_count,
             'masked_bridge_o_count': bridge_o_count,
             'is_c_glycoside_like': is_c_glycoside_like,
             # Observation fields
-            'accepted_via_score': bool(sugar_rings),
+            'accepted_via_score': bool(evidences),
             'accepted_ring_size': int(best_ring_size) if best_ring is not None else 0,
             'accepted_ring_score': float(best_score) if best_ring is not None else 0.0,
             'exocyclic_O_count_single_bond': int(best_ring_exo_o) if best_ring is not None else 0,
@@ -357,22 +381,23 @@ def _get_sugar_mask_heuristic(mol, sugar_cfg: Dict[str, Any]) -> Tuple[Set[int],
         mol.GetRingInfo()
 
         # Step 1: Identify sugar rings
-        sugar_rings = _find_sugar_rings(mol, sugar_cfg)
-        LOG.debug(f"Found {len(sugar_rings)} sugar rings")
+        evidences = _find_sugar_rings(mol, sugar_cfg)
+        LOG.debug(f"Found {len(evidences)} sugar rings")
 
         # Check if we need degraded masking due to zero sugar rings
-        if not sugar_rings:
+        if not evidences:
             LOG.debug("No sugar rings found - triggering degraded masking")
             minimal_mask, degraded, reasons = _perform_degraded_masking(mol, sugar_cfg)
             LOG.debug(f"Degraded masking result: degraded={degraded}, reasons={reasons}")
             return minimal_mask, degraded
 
         # Mask all atoms in sugar rings
-        for ring in sugar_rings:
-            masked_atoms.update(ring)
+        for evidence in evidences:
+            masked_atoms.update(evidence.ring)
 
         # Step 2: Identify glycosidic bridge oxygens (if enabled)
         if sugar_cfg.get('mask_glycosidic_bridge_oxygen', True):
+            sugar_rings = [evidence.ring for evidence in evidences]
             bridge_oxygens = _find_glycosidic_bridge_oxygens(mol, sugar_rings)
             LOG.debug(f"Found {len(bridge_oxygens)} bridge oxygens")
             masked_atoms.update(bridge_oxygens)
@@ -422,12 +447,12 @@ def _get_sugar_mask_heuristic(mol, sugar_cfg: Dict[str, Any]) -> Tuple[Set[int],
 
             # Try to find basic sugar rings first
             try:
-                sugar_rings = _find_sugar_rings(mol, sugar_cfg)
-                if sugar_rings:
+                evidences = _find_sugar_rings(mol, sugar_cfg)
+                if evidences:
                     # Mask atoms in identified sugar rings
-                    for ring in sugar_rings:
-                        minimal_mask.update(ring)
-                    LOG.debug(f"Minimal masking: found {len(sugar_rings)} sugar rings")
+                    for evidence in evidences:
+                        minimal_mask.update(evidence.ring)
+                    LOG.debug(f"Minimal masking: found {len(evidences)} sugar rings")
             except Exception:
                 pass
 
@@ -485,7 +510,7 @@ def get_sugar_mask(mol, mode: str = 'heuristic', sugar_cfg: Dict[str, Any] = Non
     return mask
 
 
-def _find_sugar_rings(mol, sugar_cfg: Dict[str, Any] = None) -> List[Tuple[int, ...]]:
+def _find_sugar_rings(mol, sugar_cfg: Dict[str, Any] = None) -> List[SugarRingEvidence]:
     """
     Find rings that match sugar criteria using evidence-based scoring system (P1-1).
 
@@ -498,6 +523,9 @@ def _find_sugar_rings(mol, sugar_cfg: Dict[str, Any] = None) -> List[Tuple[int, 
     - Anomeric-like topology: +2 points
 
     Rings with score >= threshold are accepted as sugar rings.
+
+    Returns:
+        List of SugarRingEvidence objects sorted by score (descending)
     """
     # Merge default config
     if sugar_cfg is None:
@@ -506,7 +534,7 @@ def _find_sugar_rings(mol, sugar_cfg: Dict[str, Any] = None) -> List[Tuple[int, 
     # P1-1: Configurable evidence score threshold for main pathway acceptance
     evidence_threshold = sugar_cfg.get('sugar_ring_score_threshold', 8.0)
 
-    sugar_rings = []
+    evidences = []
 
     try:
         ring_info = mol.GetRingInfo()
@@ -584,23 +612,29 @@ def _find_sugar_rings(mol, sugar_cfg: Dict[str, Any] = None) -> List[Tuple[int, 
             LOG.debug(f"Ring {ring} evidence score: {score:.1f} (threshold: {evidence_threshold})")
 
             # P1-1: Accept ring if score meets evidence threshold AND strong sugar evidence
-            # Strong evidence requires either:
-            # - >=2 exocyclic oxygens OR C-glycoside evidence (original criteria)
-            # - Very high score indicating clear sugar pattern (relaxed criteria for common sugars)
+            # Strong evidence requires:
+            # - >=2 exocyclic oxygens OR C-glycoside evidence
             has_strong_evidence = (exocyclic_o_count >= 2) or has_cglyco_evidence
-            has_very_high_score = score >= (evidence_threshold + 5.0)  # High confidence threshold
 
-            if score >= evidence_threshold and (has_strong_evidence or has_very_high_score):
-                sugar_rings.append(ring)
-                evidence_type = "strong" if has_strong_evidence else "high_score"
-                LOG.debug(f"Sugar ring accepted via evidence scoring ({evidence_type}): {ring} (score: {score:.1f}, exo_O: {exocyclic_o_count}, cglyco: {has_cglyco_evidence})")
+            if score >= evidence_threshold and has_strong_evidence:
+                evidence = SugarRingEvidence(
+                    ring=tuple(ring),
+                    ring_size=ring_size,
+                    exocyclic_o_count_single_bond=exocyclic_o_count,
+                    has_cglyco_evidence=bool(has_cglyco_evidence),
+                    score=score
+                )
+                evidences.append(evidence)
+                LOG.debug(f"Sugar ring accepted via evidence scoring: {ring} (score: {score:.1f}, exo_O: {exocyclic_o_count}, cglyco: {has_cglyco_evidence})")
             elif score >= evidence_threshold:
                 LOG.debug(f"Sugar ring rejected due to weak evidence: {ring} (score: {score:.1f}, exo_O: {exocyclic_o_count}, cglyco: {has_cglyco_evidence})")
 
     except Exception as e:
         LOG.debug(f"Sugar ring detection failed: {e}")
 
-    return sugar_rings
+    # Sort by score descending (best evidence first)
+    evidences.sort(key=lambda e: e.score, reverse=True)
+    return evidences
 
 
 def _is_ring_aromatic(mol, ring: Tuple[int, ...]) -> bool:
@@ -639,65 +673,41 @@ def _has_inner_carbonyl(mol, ring: Tuple[int, ...]) -> bool:
 
 
 def _count_exocyclic_oxygens_single_bond(mol, ring: Tuple[int, ...]) -> int:
-    """Count exocyclic oxygen substituents connected via single bonds only (P1-1 scoring)."""
+    """Count exocyclic oxygen substituents connected via single bonds only.
+
+    Exocyclic means strictly OUTSIDE the ring. Ring oxygens are never counted.
+    """
     try:
         ring_atoms = set(ring)
         seen_o = set()
-        exocyclic_count = 0
-
-        # Pre-fetch ring info for fallback checks
-        ring_info = mol.GetRingInfo()
 
         for atom_idx in ring:
             atom = mol.GetAtomWithIdx(atom_idx)
 
-            # Count oxygen neighbors that are not in the ring and connected by single bond
             for neighbor in atom.GetNeighbors():
                 if neighbor.GetSymbol() != 'O':
                     continue
                 n_idx = neighbor.GetIdx()
                 if n_idx in ring_atoms:
-                    continue
+                    continue  # exocyclic means outside the ring
 
                 # Check bond type - only count single bonds
                 bond = mol.GetBondBetweenAtoms(atom_idx, n_idx)
                 if not bond or bond.GetBondType() != Chem.BondType.SINGLE:
                     continue
 
-                # Check if this oxygen should be excluded
-                # Only exclude ring oxygens that are simple cyclic ethers without glycosidic evidence
+                # Exclude ring oxygens (outside the current ring but in other rings)
                 try:
-                    in_ring = neighbor.IsInRing()  # Fast path when available
+                    if neighbor.IsInRing():
+                        continue  # Ring oxygen belongs to other evidence features, not exocyclic count
                 except Exception:
-                    # Fallback to ring_info if IsInRing is unavailable
-                    try:
-                        in_ring = bool(ring_info.IsAtomInRing(n_idx))
-                    except Exception:
-                        in_ring = False
-
-                if in_ring:
-                    # Check if this is a simple cyclic ether (both neighbors are ring carbons in same ring)
-                    # If so, exclude it. If it has glycosidic patterns, keep it as sugar evidence.
-                    o_neighbors = list(neighbor.GetNeighbors())
-                    if len(o_neighbors) == 2:
-                        o_neighbor_idxs = [n.GetIdx() for n in o_neighbors]
-                        # Check if both neighbors are carbons and in rings
-                        both_carbon_and_ring = all(
-                            mol.GetAtomWithIdx(nidx).GetSymbol() == 'C' and
-                            mol.GetAtomWithIdx(nidx).IsInRing()
-                            for nidx in o_neighbor_idxs
-                        )
-                        # If both neighbors are ring carbons, this is likely a simple cyclic ether
-                        if both_carbon_and_ring:
-                            continue  # Exclude simple ring ethers
-                    # Otherwise, keep ring oxygens that might be glycosidic links
+                    pass  # If we can't determine ring membership, include it
 
                 # De-duplicate the same oxygen connected to multiple ring atoms
                 if n_idx not in seen_o:
                     seen_o.add(n_idx)
-                    exocyclic_count += 1
 
-        return exocyclic_count
+        return len(seen_o)
     except Exception:
         return 0
 
@@ -854,8 +864,8 @@ def _find_independent_bridge_oxygens(mol) -> List[int]:
 
 
 def _find_exocyclic_oxygens(mol, sugar_rings: List[Tuple[int, ...]]) -> List[int]:
-    """Find exocyclic oxygen atoms attached to sugar rings."""
-    exocyclic_oxygens = []
+    """Find exocyclic oxygen atoms and their side chains attached to sugar rings."""
+    exocyclic_atoms = []
 
     try:
         ring_atoms = set()
@@ -881,12 +891,62 @@ def _find_exocyclic_oxygens(mol, sugar_rings: List[Tuple[int, ...]]) -> List[int
                                 break
 
                         if not neighbor_in_any_ring:
-                            exocyclic_oxygens.append(neighbor.GetIdx())
+                            # Add the oxygen atom itself
+                            exocyclic_atoms.append(neighbor.GetIdx())
+
+                            # Add side chain atoms attached to this exocyclic oxygen
+                            for side_chain_neighbor in neighbor.GetNeighbors():
+                                side_chain_idx = side_chain_neighbor.GetIdx()
+
+                                # Skip the sugar ring atom we came from
+                                if side_chain_idx == atom_idx:
+                                    continue
+
+                                # Include side chain atoms (H for O-H, C for O-CH3, etc.)
+                                if side_chain_neighbor.GetSymbol() in ('H', 'C'):
+                                    exocyclic_atoms.append(side_chain_idx)
+
+                                    # For carbon side chains (like CH3), include their hydrogen neighbors
+                                    if side_chain_neighbor.GetSymbol() == 'C':
+                                        for carbon_neighbor in side_chain_neighbor.GetNeighbors():
+                                            if carbon_neighbor.GetSymbol() == 'H':
+                                                exocyclic_atoms.append(carbon_neighbor.GetIdx())
+
+                # IMPORTANT: Also find carbon side chains (like -CH2OH) attached to sugar ring carbons
+                # These can have oxygen substituents that should also be masked
+                for neighbor in atom.GetNeighbors():
+                    if (neighbor.GetSymbol() == 'C' and
+                        neighbor.GetIdx() not in ring_atoms):
+
+                        # Check if this carbon is truly exocyclic (not in any ring)
+                        neighbor_ring_info = mol.GetRingInfo()
+                        neighbor_in_any_ring = False
+                        for ring_tuple in neighbor_ring_info.AtomRings():
+                            if neighbor.GetIdx() in ring_tuple:
+                                neighbor_in_any_ring = True
+                                break
+
+                        if not neighbor_in_any_ring:
+                            # Add the carbon atom itself (e.g., CH2 in CH2OH)
+                            exocyclic_atoms.append(neighbor.GetIdx())
+
+                            # Recursively add all neighbors of this carbon
+                            # This will include OH in -CH2OH, as well as H atoms
+                            for carbon_neighbor in neighbor.GetNeighbors():
+                                carbon_neighbor_idx = carbon_neighbor.GetIdx()
+
+                                # Skip the sugar ring atom we came from
+                                if carbon_neighbor_idx == atom_idx:
+                                    continue
+
+                                # Add all non-ring neighbors (O, H, etc.)
+                                if carbon_neighbor_idx not in ring_atoms:
+                                    exocyclic_atoms.append(carbon_neighbor_idx)
 
     except Exception as e:
         LOG.debug(f"Exocyclic oxygen detection failed: {e}")
 
-    return exocyclic_oxygens
+    return exocyclic_atoms
 
 
 def _has_c_glycoside_pattern(mol, ring: Tuple[int, ...]) -> bool:

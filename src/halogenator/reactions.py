@@ -2,13 +2,17 @@
 """Reaction processing utilities."""
 
 from typing import Optional
-from rdkit import Chem
-from rdkit.Chem import RWMol
 
 
-def replace_star_with_halogen(prod_mol: Chem.Mol, halogen_symbol: str) -> Optional[Chem.Mol]:
+def replace_star_with_halogen(prod_mol, halogen_symbol: str):
     """Replace * (dummy atom) with halogen in reaction product."""
     if prod_mol is None:
+        return None
+    
+    try:
+        from .chem_compat import Chem
+        RWMol = Chem.RWMol
+    except Exception:
         return None
     
     try:
@@ -36,9 +40,15 @@ def replace_star_with_halogen(prod_mol: Chem.Mol, halogen_symbol: str) -> Option
         return None
 
 
-def apply_single_site_halogenation(mol: Chem.Mol, atom_idx: int, halogen_symbol: str) -> Optional[Chem.Mol]:
+def apply_single_site_halogenation(mol, atom_idx: int, halogen_symbol: str):
     """Apply single site halogenation by adding halogen to carbon."""
     if mol is None:
+        return None
+    
+    try:
+        from .chem_compat import Chem
+        RWMol = Chem.RWMol
+    except Exception:
         return None
     
     try:
@@ -87,4 +97,5 @@ def _get_atomic_num(halogen_symbol: str) -> int:
 
 def validate_halogen(halogen_symbol: str) -> bool:
     """Validate that symbol is a supported halogen."""
-    return halogen_symbol in ['F', 'Cl', 'Br', 'I']
+    from .schema import ALL_HALOGENS
+    return halogen_symbol in ALL_HALOGENS
