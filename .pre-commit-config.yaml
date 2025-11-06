@@ -2,7 +2,31 @@ repos:
   - repo: local
     hooks:
       - id: ascii-check
-        name: ascii-check
-        entry: scripts/check_ascii.sh
+        name: ASCII Compliance Check
+        entry: python scripts/check_ascii_portable.py
         language: system
         pass_filenames: false
+        stages: [pre-commit, pre-push]
+
+      - id: ascii-root-files
+        name: ASCII Check Root Files
+        entry: python scripts/check_ascii_root_files.py
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
+        
+      - id: python-imports
+        name: Python Import Check
+        entry: python -c "from src.halogenator import cli, enumerate_k1, sites, rules, schema; print('Core imports OK')"
+        language: system
+        pass_filenames: false
+        files: '^src/halogenator/.*\.py$'
+        stages: [pre-commit]
+        
+      - id: schema-validation
+        name: Schema Validation Check
+        entry: python scripts/precommit_schema_check.py
+        language: system
+        pass_filenames: false
+        files: '^src/halogenator/schema\.py$'
+        stages: [pre-commit]

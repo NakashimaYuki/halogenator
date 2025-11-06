@@ -152,7 +152,7 @@ class TestSchemaRecords(unittest.TestCase):
             {col: f'value2_{col}' for col in incomplete_columns}
         ]
         
-        with self.assertRaisesRegex(ValueError, r"Products table missing required columns.*not found in any record.*halogen.*rule"):
+        with self.assertRaisesRegex(ValueError, r"Products table.*missing required columns.*not found in any record.*halogen.*rule"):
             validate_products_records(records)
     
     def test_validate_products_records_error_message_record_specific(self):

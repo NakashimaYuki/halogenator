@@ -130,8 +130,53 @@ dmypy.json
 
 # Halogenator specific
 data/output/
+data/work/
 **/parents_all.smi
 **/products_k1_all.sdf
 **/products_k1_all.parquet
 *.log
 .claude/
+
+# Data files (exclude from version control)
+*.xlsx
+*.xls
+flavonoid_smiles_data_ETCM.xlsx
+data/input/*.smi
+!data/input/rule_probes.smi
+
+# Debug and temporary files
+debug_*.py
+testing_*.py
+*_debug.py
+test_*.py
+!tests/test_*.py
+test_sugar_mask_smoke.py
+test_*/
+debug_*/
+out/
+benchmarks/
+artifacts/
+MagicMock/
+nul
+structure.png
+
+# Temporary analysis scripts
+analyze_*.py
+draw.py
+browse_*.py
+check_*.py
+!scripts/check_*.py
+
+# Temporary configs and reports
+*_report.md
+*_analysis_report.md
+naringenin_r2b_analysis_report.md
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

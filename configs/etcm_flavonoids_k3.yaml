@@ -1,0 +1,39 @@
+# ETCM 2000 Flavonoids k=3 Configuration
+# Extended configuration for tri-substituted halogenation products
+# Use after successful k=2 run - produces larger output
+
+halogens:
+  - F
+  - Cl
+  - Br
+  - I
+
+rules:
+  - R1
+  - R2
+  - R3
+  - R4
+  - R5
+
+k_max: 3
+
+constraints:
+  per_ring_quota: 2
+  min_graph_distance: 2
+  max_per_halogen: 1000
+
+standardize:
+  do_tautomer: false
+
+qc:
+  sanitize_strict: true
+  pains: true
+
+pruning:
+  enable_symmetry_fold: true
+  enable_state_sig: true
+
+io:
+  smiles_file: "out/etcm2000/parents/parents.smi"
+  products_table: "out/etcm2000/p1_k3/products_k3.parquet"
+  summary_csv: "out/etcm2000/p1_k3/summary_k3.csv"

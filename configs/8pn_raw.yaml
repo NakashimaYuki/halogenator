@@ -1,0 +1,24 @@
+# 8-PN Scenario B2: Raw + R2b fallback (main run)
+# Purpose: R2 family count should increase significantly, R2b detection should be mainly 'fallback'
+
+rules: [R1, R2, R3, R6_methyl]
+k_max: 2
+halogens: [F, Cl, Br, I]
+
+io:
+  smiles_file: "data/input/8pn.smi"
+
+engine_cfg:
+  budget_mode: ops
+
+rules_cfg:
+  R2:
+    sp3_CH2_flavanone: true
+    allow_alpha_as_beta: false
+    fallback:
+      enable: true     # Key: enable fallback
+  R6_methyl:
+    enable: true
+    allow_allylic_methyl: true
+    macro:
+      enable: false       # Only stepwise halogenation

@@ -1,0 +1,83 @@
+{
+  "description": "PR1 sugar masking acceptance test samples",
+  "version": "1.0",
+  "samples": [
+    {
+      "id": "TCMIP-I-11313",
+      "name": "5,7,3',4'-Tetrahydroxyflavone-6-C-beta-D-glucoside",
+      "smiles": "O=c1cc(-c2ccc(O)c(O)c2)oc2cc(O)c(C3CC(O)C(CO)O3)c(O)c12",
+      "type": "glycoside",
+      "description": "Flavone glycoside with C-linked glucose"
+    },
+    {
+      "id": "TCMIP-I-15335",
+      "name": "apetalumoside B12",
+      "smiles": "COc1cc(/C=C/C(=O)O[C@@H]2[C@@H](O)[C@H](O[C@H]3O[C@@H](Oc4c(-c5ccc(O)c(O)c5)oc5cc(O[C@@H]6O[C@H](CO)[C@@H](O)[C@H](O)[C@H]6O)cc(O)c5c4=O)[C@H](O[C@@H]4O[C@H](OC(=O)/C=C/c5cc(OC)c(O)c(OC)c5)[C@@H](O)[C@H](O)[C@H]4O)[C@@H](O)[C@@H]3O)O[C@H](CO)[C@H]2O)cc(OC)c1O",
+      "type": "glycoside",
+      "description": "Complex flavonoid glycoside with multiple sugar moieties"
+    },
+    {
+      "id": "TCMIP-I-32411",
+      "name": "Paniculatonoid B",
+      "smiles": "C[C@@H]1O[C@H](O[C@H]2[C@H](COC(=O)/C=C\\c3ccc(O)cc3)O[C@H](O[C@H]3[C@H](COC(=O)/C=C\\c4ccc(O)cc4)O[C@H](Oc4c(-c5ccc(O)cc5)oc5cc(O[C@H]6O[C@@H](C)[C@H](O)[C@@H](O)[C@@H]6O)cc(O)c5c4=O)[C@@H](O)[C@@H]3O)[C@@H](O)[C@@H]2O)[C@@H](O)[C@H](O)[C@H]1O[C@H]1O[C@@H](CO)[C@H](O)[C@@H](O)[C@@H]1O",
+      "type": "glycoside",
+      "description": "Flavonoid with multiple O-linked sugar units"
+    },
+    {
+      "id": "C-GLYCO-POSITIVE-1",
+      "name": "Luteolin-6-C-glucoside (Isoorientin)",
+      "smiles": "O=c1cc(-c2ccc(O)c(O)c2)oc2cc(O)c(C3CC(O)C(O)C(CO)O3)c(O)c12",
+      "type": "glycoside",
+      "description": "Flavone with 6-C-linked glucose (5-member furanose form)"
+    },
+    {
+      "id": "C-GLYCO-POSITIVE-2",
+      "name": "Vitexin (Apigenin-8-C-glucoside)",
+      "smiles": "O=c1cc(-c2ccc(O)cc2)oc2c(C3OC(CO)C(O)C(O)C3O)c(O)cc(O)c12",
+      "type": "glycoside",
+      "description": "Flavone with 8-C-linked glucose (true C-glycoside pattern)"
+    },
+    {
+      "id": "NEG-CONTROL-QUERCETIN",
+      "name": "Quercetin",
+      "smiles": "O=c1c(O)c(-c2ccc(O)c(O)c2)oc2cc(O)cc(O)c12",
+      "type": "aglycone",
+      "description": "Non-glycosylated flavonoid control (quercetin aglycone)"
+    },
+    {
+      "id": "NEG-CONTROL-CHROMONE",
+      "name": "Chromone",
+      "smiles": "O=c1ccoc2ccccc12",
+      "type": "aglycone",
+      "description": "Simple chromone core - should not be masked"
+    },
+    {
+      "id": "NEG-CONTROL-COUMARIN",
+      "name": "Coumarin",
+      "smiles": "O=c1ccc2ccccc2o1",
+      "type": "aglycone",
+      "description": "Simple coumarin - should not be masked"
+    },
+    {
+      "id": "NEG-CONTROL-BENZOFURAN",
+      "name": "Benzofuran",
+      "smiles": "c1ccc2occc2c1",
+      "type": "aglycone",
+      "description": "Benzofuran with oxygen ring - should not be masked"
+    },
+    {
+      "id": "NEG-CONTROL-DIOXANE",
+      "name": "1,4-Dioxane",
+      "smiles": "C1COCCO1",
+      "type": "aglycone",
+      "description": "Simple oxygen-containing ring without sugar characteristics"
+    },
+    {
+      "id": "NEG-CONTROL-GBL",
+      "name": "gamma-Butyrolactone (GBL)",
+      "smiles": "O=C1OCCC1",
+      "type": "aglycone",
+      "description": "Non-aromatic lactone - tests lactone/ester oxygen filtering"
+    }
+  ]
+}

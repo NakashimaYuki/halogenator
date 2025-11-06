@@ -1,0 +1,28 @@
+# Test R1 with naringenin
+halogens: [F]
+rules: [R1]
+k_max: 1
+
+constraints:
+  per_ring_quota: null
+  min_graph_distance: 1
+
+standardize:
+  do_tautomer: false
+
+qc:
+  sanitize_strict: true
+  pains: false
+
+pruning:
+  enable_symmetry_fold: false
+  enable_state_sig: false
+
+sugar_cfg:
+  mode: off
+
+engine_cfg:
+  budget_mode: ops
+
+io:
+  smiles_file: "test_flavanone_only.smi"

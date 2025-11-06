@@ -1,0 +1,44 @@
+# k=2 full rule coverage with enhanced parent dataset - COMPATIBILITY MODE
+# All rules R1-R6, all halogens F/Cl/Br/I
+# R6 methoxy and allylic methyl substitution enabled
+# R2 compatibility: allow alpha=1 as beta=2 (broader coverage)
+
+rules: ["R1", "R2", "R3", "R4", "R5", "R6_methyl"]
+k_max: 2
+halogens: ["F", "Cl", "Br", "I"]
+
+rules_cfg:
+  R2:
+    sp2_CH_in_C_ring: true
+    sp3_CH2_flavanone: true
+    allow_alpha_as_beta: true       # Compatibility mode - treat alpha=1 as beta=2
+    allowed_halogens: ["F", "Cl", "Br", "I"]
+  R6_methyl:
+    enable: true
+    allowed: ["F", "Cl"]            # R6 implementation supports F/Cl; Br/I handled by other rules
+    allow_on_methoxy: true          # Enable R6 substitution on methoxy groups (-OCH3 to -OCH2X)
+    allow_allylic_methyl: true      # Enable R6 on allylic methyl (prenyl chains)
+    macro:
+      enable: false
+      labels: ["CF3", "CCl3"]
+
+constraints:
+  per_ring_quota: 2
+  min_graph_distance: 2
+
+standardize:
+  do_tautomer: false
+
+qc:
+  sanitize_strict: true
+  pains: true
+
+pruning:
+  enable_symmetry_fold: true
+  enable_state_sig: true
+
+sugar_cfg:
+  mode: "heuristic"
+
+io:
+  smiles_file: "out/etcm2000/parents/parents_pick.smi"

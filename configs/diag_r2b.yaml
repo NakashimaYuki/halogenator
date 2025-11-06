@@ -1,0 +1,39 @@
+# Diagnostic configuration for R2b validation
+# Focuses on C-ring sp2 CH sites and sp3 CH2 flavanone sites
+# Simplified settings for debugging helper functions
+
+# Core enumeration settings
+rules: [R2]
+k_max: 1
+halogens: [F]  # Single halogen for simplicity
+
+# R2 rule configuration - enable both sub-rules
+rules_cfg:
+  R2:
+    sp2_CH_in_C_ring: true        # Enable C-ring sp2 CH halogenation
+    sp3_CH2_flavanone: true       # Enable flavanone CH2 halogenation
+    allow_alpha_as_beta: false    # Strict mode for diagnostic
+
+# Disable complexity features for cleaner debugging
+pruning:
+  enable_symmetry_fold: false     # No symmetry folding
+  enable_duplicate_check: true    # Keep dedup for sanity
+
+constraints:
+  per_ring_quota: null            # No ring quotas
+  per_parent_quota: null          # No parent quotas
+
+# Simple sugar masking
+sugar_cfg:
+  mode: heuristic                 # Standard mode
+  audit: true                     # Enable audit for debugging
+
+# Input/Output
+io:
+  smiles_file: "out/etcm2000/parents/parents_pick.smi"
+  products_sdf: "diag_r2b_products.sdf"
+  qa_json: "diag_r2b_qa.json"
+
+# Metadata
+description: "Diagnostic config for R2b validation - focuses on C-ring sites and flavanone CH2 detection"
+version: "diag_v1"

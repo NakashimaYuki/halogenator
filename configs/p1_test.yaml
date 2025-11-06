@@ -1,0 +1,23 @@
+constraints:
+  min_graph_distance: 2
+  per_ring_quota: 2
+halogens:
+- F
+- Cl
+io:
+  products_table: data/output/p1/test_products.parquet
+  smiles_file: data/input/test_parents.smi
+  summary_csv: data/output/p1/test_summary.csv
+k_max: 2
+pruning:
+  enable_symmetry_fold: true
+qc:
+  sanitize_strict: true
+rules:
+- R1
+- R2
+- R3
+- R4
+- R5
+standardize:
+  do_tautomer: false

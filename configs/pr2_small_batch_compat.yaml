@@ -1,0 +1,43 @@
+# PR2 Small Batch Compatibility Configuration
+# Alpha-as-beta compatibility (same-ring distance=1 or 2)
+
+halogens:
+  - F
+  - Cl
+
+rules:
+  - R1
+  - R2
+  - R3
+  - R4
+  - R5
+
+k_max: 2
+
+rules_cfg:
+  R2:
+    sp2_CH_in_C_ring: true
+    sp3_CH2_flavanone: true
+    allow_alpha_as_beta: true   # Allow alpha (same-ring distance=1) compatibility
+
+constraints:
+  per_ring_quota: 2
+  min_graph_distance: 2
+  max_per_halogen: null
+
+standardize:
+  do_tautomer: false
+
+qc:
+  sanitize_strict: true
+  pains: true
+
+pruning:
+  enable_symmetry_fold: true
+  enable_state_sig: false
+
+sugar_cfg:
+  mode: "heuristic"
+
+io:
+  smiles_file: "out/etcm2000/parents/parents_pick.smi"

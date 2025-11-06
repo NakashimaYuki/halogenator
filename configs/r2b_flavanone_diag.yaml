@@ -1,0 +1,36 @@
+# R2b diagnostic configuration - minimal setup to test flavanone C3-CH2 targeting
+# Only R2 enabled, relaxed constraints, alpha=1 allowed as beta
+
+halogens: [F]  # Single halogen for focused testing
+rules: [R2]    # Only R2 family
+k_max: 1       # k=1 for single substitution testing
+
+rules_cfg:
+  R2:
+    sp2_CH_in_C_ring: false      # Disable R2a to focus on R2b
+    sp3_CH2_flavanone: true      # Enable R2b
+    allow_alpha_as_beta: true    # Allow alpha=1 positions as beta
+
+constraints:
+  per_ring_quota: null    # Remove ring quota constraints
+  min_graph_distance: 1   # Minimal distance constraint
+
+standardize:
+  do_tautomer: false
+
+qc:
+  sanitize_strict: true
+  pains: false  # Disable PAINS filter for diagnostic
+
+pruning:
+  enable_symmetry_fold: false  # Disable to see all sites
+  enable_state_sig: false      # Disable to avoid deduplication
+
+sugar_cfg:
+  mode: off  # Disable sugar masking completely
+
+engine_cfg:
+  budget_mode: ops
+
+io:
+  smiles_file: "out/etcm2000/parents/parents_pick_named.smi"

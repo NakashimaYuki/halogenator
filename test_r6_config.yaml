@@ -1,0 +1,38 @@
+# Test configuration for R6 allylic methyl fix validation with 8-Prenylnaringenin
+
+rules: ["R6_methyl"]
+k_max: 1  # Test k=1 first to isolate R6 behavior
+halogens: ["F", "Cl"]
+
+rules_cfg:
+  R6_methyl:
+    enable: true
+    allowed: ["F", "Cl"]
+    allow_on_methoxy: true          # Enable R6 substitution on methoxy groups (-OCH3 to -OCH2X)
+    allow_allylic_methyl: true      # Enable R6 on allylic methyl (prenyl chains)
+    macro:
+      enable: false
+
+constraints:
+  per_ring_quota: 2
+  min_graph_distance: 2
+
+standardize:
+  do_tautomer: false
+
+qc:
+  sanitize_strict: true
+  pains: true
+
+pruning:
+  enable_symmetry_fold: true
+  enable_state_sig: true
+
+sugar_cfg:
+  mode: "off"  # Disable sugar masking for clearer R6 testing
+
+engine:
+  debug: true
+
+io:
+  smiles_file: "test_8_prenylnaringenin.smi"

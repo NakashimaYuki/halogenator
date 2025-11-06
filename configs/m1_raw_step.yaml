@@ -1,0 +1,19 @@
+# M1 Scenario A2: Raw + stepwise halogenation (R6 enabled, macro disabled)
+# Purpose: Observe methoxy-CH3 stepwise halogenation, no CF3/CCl3 generation
+
+rules: [R1, R2, R3, R6_methyl]
+k_max: 2
+halogens: [F, Cl, Br, I]
+
+io:
+  smiles_file: "data/input/methoxy_M1.smi"
+
+engine_cfg:
+  budget_mode: ops
+
+rules_cfg:
+  R6_methyl:
+    enable: true
+    allow_on_methoxy: true   # Allow methoxy methyl to be hit by R6
+    macro:
+      enable: false          # Explicitly disable macro

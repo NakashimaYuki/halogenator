@@ -1,0 +1,32 @@
+# Flavone base validation config
+rules: [R1, R2, R3]
+k_max: 2
+halogens: [F, Cl, Br, I]
+
+rules_cfg:
+  R2:
+    sp3_CH2_flavanone: true
+    sp2_CH_in_C_ring: true
+    allow_alpha_as_beta: false
+    fallback:
+      enable: false
+
+io:
+  smiles_file: "data/input/flavone_base.smi"
+
+constraints:
+  per_ring_quota: 2
+  min_graph_distance: 2
+
+pruning:
+  enable_symmetry_fold: true
+
+qc:
+  enable_rdkit_qc: true
+
+sugar_cfg:
+  mode: heuristic
+  proximity_guard_radius: 2
+
+budget:
+  mode: ops

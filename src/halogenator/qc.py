@@ -2,13 +2,16 @@
 """Quality control utilities."""
 
 from typing import Dict, Any
-from rdkit import Chem
-from rdkit.Chem import Descriptors, Crippen, Lipinski, rdMolDescriptors
 
 
-def sanitize_ok(mol: Chem.Mol) -> bool:
+def sanitize_ok(mol) -> bool:
     """Check if molecule sanitizes OK."""
     if mol is None:
+        return False
+    
+    try:
+        from .chem_compat import Chem
+    except Exception:
         return False
     
     try:
@@ -22,12 +25,24 @@ def sanitize_ok(mol: Chem.Mol) -> bool:
         return False
 
 
-def basic_descriptors(mol: Chem.Mol) -> Dict[str, Any]:
+def basic_descriptors(mol) -> Dict[str, Any]:
     """Calculate basic molecular descriptors."""
     if mol is None:
         return {
             'mw': 0.0,
             'logp': 0.0, 
+            'tpsa': 0.0,
+            'hba': 0,
+            'hbd': 0,
+            'aromatic_rings': 0
+        }
+    
+    try:
+        from rdkit.Chem import Descriptors, Crippen, Lipinski, rdMolDescriptors
+    except Exception:
+        return {
+            'mw': 0.0,
+            'logp': 0.0,
             'tpsa': 0.0,
             'hba': 0,
             'hbd': 0,
@@ -71,7 +86,7 @@ def basic_descriptors(mol: Chem.Mol) -> Dict[str, Any]:
         }
 
 
-def pains_flags(mol: Chem.Mol) -> int:
+def pains_flags(mol) -> int:
     """Check PAINS flags. Returns count of PAINS alerts (0 = no alerts)."""
     if mol is None:
         return 0
@@ -82,7 +97,7 @@ def pains_flags(mol: Chem.Mol) -> int:
     return 0
 
 
-def passes_qc(mol: Chem.Mol, strict: bool = True) -> bool:
+def passes_qc(mol, strict: bool = True) -> bool:
     """Check if molecule passes basic QC requirements."""
     if not sanitize_ok(mol):
         return False

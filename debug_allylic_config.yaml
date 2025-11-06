@@ -1,0 +1,38 @@
+k_max: 1
+halogens: ['F', 'Cl']
+rules: ['R6_methyl']
+
+rules_cfg:
+  R6_methyl:
+    enable: true
+    allow_on_methoxy: true
+    allow_allylic_methyl: true
+    allowed: ['F', 'Cl']
+
+io:
+  smiles_file: 'test_single_prenyl.smi'
+
+constraints:
+  per_ring_quota: 2
+  min_graph_distance: 2
+
+standardize:
+  do_tautomer: false
+
+qc:
+  sanitize_strict: true
+  tautomer_canonicalize: false
+
+pruning:
+  enable_symmetry_fold: false
+
+sugar:
+  mode: 'heuristic'
+  mask_exocyclic_oxygen: true
+  mask_glycosidic_bridge_oxygen: true
+
+symmetry:
+  compute_on_masked_subgraph: true
+
+engine:
+  budget_mode: 'ops'

@@ -1,0 +1,26 @@
+# Diagnostic config: enumerate all potential R1 sites at k=1
+
+halogens: [F]        # Single halogen for easier site comparison
+rules: [R1]
+k_max: 1
+
+rules_cfg:
+  R1: {}
+  # If there are EAS scoring thresholds (score_threshold / min_activation),
+  # they should be set to permissive values here
+
+constraints:
+  per_ring_quota: null       # Disable per-ring quota (KEY for diagnosis)
+  min_graph_distance: 1      # k=1 has no impact, but keep reasonable
+
+pruning:
+  enable_symmetry_fold: false   # Disable symmetry folding to see all symmetric sites
+  enable_state_sig: false
+
+sugar_cfg:
+  mode: heuristic
+  # If suspecting sugar neighborhood masking affects A ring sites, can temporarily use:
+  # mode: off
+
+io:
+  smiles_file: "out/etcm2000/parents/parents_pick_named.smi"

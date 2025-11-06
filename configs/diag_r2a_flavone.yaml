@@ -1,0 +1,28 @@
+# R2a positive sample test with unsubstituted flavone
+# Purpose: Verify R2a can identify sp2 CH sites in C-ring
+
+rules: [R2]
+k_max: 1
+halogens: [F]
+
+rules_cfg:
+  R2:
+    sp2_CH_in_C_ring: true      # Enable R2a (sp2 CH halogenation in C-ring)
+    sp3_CH2_flavanone: false    # Disable R2b
+    allow_alpha_as_beta: false  # Strict mode - only beta positions
+    allowed_halogens: [F]
+
+# Input file
+io:
+  smiles_file: "test_flavone.smi"
+
+# Minimal settings to reduce variables
+constraints:
+  per_ring_quota: null
+  min_graph_distance: null
+pruning:
+  enable_symmetry_fold: false
+qc:
+  enable_rdkit_qc: false
+sugar_cfg:
+  mode: heuristic

@@ -1,0 +1,155 @@
+# -*- coding: ascii -*-
+name: P1 Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  p1-smoke:
+    name: P1 Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Conda with consistent environment
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        python-version: "3.10"
+        miniconda-version: latest
+        auto-activate-base: true
+        use-mamba: true
+        channels: conda-forge,defaults
+        channel-priority: strict
+        
+    - name: Install dependencies via conda-forge
+      shell: bash -l {0}
+      run: |
+        # Pin RDKit and core dependencies for stability
+        mamba install rdkit=2023.09.* pandas=2.* pyarrow=14.* openpyxl=3.* -y
+        
+    - name: Install package in development mode
+      shell: bash -l {0}
+      run: |
+        pip install -e .
+        
+    - name: Print dependency information
+      shell: bash -l {0}
+      run: |
+        echo "=== Mamba Info ==="
+        mamba info
+        echo "=== Conda List ==="
+        conda list | head -20
+        echo "=== Python and RDKit Versions ==="
+        python -c "import sys; print(f'Python: {sys.version}')"
+        python -c "import rdkit; print(f'RDKit: {rdkit.__version__}')"
+        
+    - name: ASCII check
+      shell: bash -l {0}
+      run: |
+        if [ -f scripts/check_ascii.sh ]; then
+          chmod +x scripts/check_ascii.sh
+          ./scripts/check_ascii.sh
+        fi
+        
+    - name: Run P1 unit tests
+      shell: bash -l {0}
+      run: |
+        python -m unittest discover tests -v -k "test_p1"
+        
+    - name: Test P1 CLI enum
+      shell: bash -l {0}
+      run: |
+        echo -e "c1ccccc1\tbenzene\nc1ccc(O)cc1\tphenol" > test_input.smi
+        python -m halogenator.cli enum --smiles-file test_input.smi --k 2 --halogens F Cl --outdir test_output
+        
+    - name: Test P1 CLI report
+      shell: bash -l {0}
+      run: |
+        python -m halogenator.cli report --products test_output/products.parquet --parents test_input.smi --k-max 2
+        
+    - name: Verify P1 outputs
+      shell: bash -l {0}
+      run: |
+        test -f test_output/products.parquet
+        test -f test_output/summary.csv
+        python -c "import pandas as pd; df = pd.read_parquet('test_output/products.parquet'); print(f'Generated {len(df)} products'); assert len(df) > 5"
+
+  p1-full:
+    name: P1 Full Test Suite  
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[p1-full]')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Conda with consistent environment
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        python-version: "3.10"
+        miniconda-version: latest
+        auto-activate-base: true
+        use-mamba: true
+        channels: conda-forge,defaults
+        channel-priority: strict
+        
+    - name: Install dependencies via conda-forge
+      shell: bash -l {0}
+      run: |
+        # Pin RDKit and core dependencies for stability
+        mamba install rdkit=2023.09.* pandas=2.* pyarrow=14.* openpyxl=3.* -y
+        
+    - name: Install package in development mode
+      shell: bash -l {0}
+      run: |
+        pip install -e .
+        
+    - name: Print dependency information
+      shell: bash -l {0}
+      run: |
+        echo "=== Mamba Info ==="
+        mamba info
+        echo "=== Conda List ==="
+        conda list | head -20
+        echo "=== Python and RDKit Versions ==="
+        python -c "import sys; print(f'Python: {sys.version}')"
+        python -c "import rdkit; print(f'RDKit: {rdkit.__version__}')"
+        
+    - name: Run all tests
+      shell: bash -l {0}
+      run: |
+        python -m unittest discover tests -v
+        
+    - name: Test P1 with larger dataset
+      shell: bash -l {0}
+      run: |
+        # Create larger test set
+        cat > larger_test.smi << EOF
+        c1ccccc1	benzene
+        c1ccc(O)cc1	phenol
+        c1ccc(N)cc1	aniline
+        c1ccc(C(=O)O)cc1	benzoic_acid
+        c1cc(O)c(O)cc1	catechol
+        EOF
+        
+        # Run P1 enumeration
+        python -m halogenator.cli enum --smiles-file larger_test.smi --k 2 --halogens F Cl Br --outdir larger_test_output --constraints-per-ring-quota 2 --constraints-min-distance 2
+        
+        # Generate report
+        python -m halogenator.cli report --products larger_test_output/products.parquet --parents larger_test.smi --k-max 2
+        
+        # Verify outputs
+        python -c "
+        import pandas as pd
+        df = pd.read_parquet('larger_test_output/products.parquet')
+        print(f'Generated {len(df)} products')
+        assert len(df) > 20
+        assert 'substitutions' in df.columns
+        assert 'constraints_violations' in df.columns
+        print('P1 full test passed!')
+        "

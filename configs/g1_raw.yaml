@@ -1,0 +1,22 @@
+# G1 Scenario C2: Raw without sugar mask
+# Purpose: Product count should increase significantly, QA should show sugar_mask_mode_off counts
+
+rules: [R1, R2, R3, R6_methyl]
+k_max: 2
+halogens: [F, Cl, Br, I]
+
+io:
+  smiles_file: "data/input/glycoside_G1.smi"
+
+engine_cfg:
+  budget_mode: ops
+
+sugar_cfg:
+  mode: off
+
+rules_cfg:
+  R2:
+    sp3_CH2_flavanone: true
+    allow_alpha_as_beta: false
+    fallback:
+      enable: true    # Also test R2b fallback impact if applicable

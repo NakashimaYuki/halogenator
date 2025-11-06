@@ -1,0 +1,41 @@
+# Diagnostic configuration for R6 validation
+# Tests R6 methyl halogenation with toluene (benzylic methyl)
+
+# Core enumeration settings
+rules: [R1, R6]
+k_max: 1
+halogens: [F, Cl]  # R6 supports F/Cl
+
+# R6 rule configuration - enable with benzylic methyls
+rules_cfg:
+  R6:
+    enable: true
+    allowed: [F, Cl]                    # F/Cl are supported
+    allow_on_methoxy: false             # No methoxy methyls
+    allow_allylic_methyl: true          # Allow benzylic/allylic methyls
+    macro:
+      enable: false
+      labels: [CF3, CCl3]
+
+# Disable complexity features for cleaner debugging
+pruning:
+  enable_symmetry_fold: false           # No symmetry folding
+  enable_duplicate_check: true          # Keep dedup for sanity
+
+constraints:
+  per_ring_quota: null                  # No ring quotas
+  per_parent_quota: null                # No parent quotas
+
+# Simple sugar masking
+sugar_cfg:
+  mode: heuristic                       # Standard mode
+  audit: false                          # No audit needed for simple test
+
+# Input/Output - use probes subset (includes toluene)
+io:
+  products_sdf: "diag_r6_products.sdf"
+  qa_json: "diag_r6_qa.json"
+
+# Metadata
+description: "Diagnostic config for R6 validation - tests benzylic methyl halogenation with toluene"
+version: "diag_v1"
