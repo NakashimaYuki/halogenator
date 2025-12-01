@@ -1,0 +1,209 @@
+# Per-class halogenation rule configurations
+# STRATEGY: Maximum enumeration with safety nets only for extreme cases
+# Updated: 2025-12-01 - Permissive enumeration strategy
+#
+# Key changes from conservative strategy:
+# - Removed global max_sites_per_parent limits
+# - Rule-level safety nets only (3-12 depending on rule)
+# - Polysaccharide: disabled entirely
+# - Glycoside: exclude_sugar_like on all rules
+# - Terpenoid: enabled PRIMARY_OH exploration
+# - Alkaloid: aromatic sites up to 10
+# - Polyphenol: aromatic sites up to 12
+
+defaults:
+  halogens:
+  - F
+  - Cl
+  - Br
+  - I
+  batch_size: 5000
+  rdkit_threads: 8
+classes:
+  terpenoid:
+    description: Isoprene-derived polycyclic natural products
+    molecule_count: 28606
+    enabled: true
+    k1:
+      include_rules:
+      - RING_SP2__CH__TO__X
+      - RING_SP3__CH__TO__X
+      - COOH__TO__CX
+      - PRIMARY_OH__CH2OH__TO__X
+      sugar_mask: false
+    k2:
+      include_rules:
+      - RING_SP2__CH__TO__X
+      - RING_SP3__CH__TO__X
+      - COOH__TO__CX
+      - ALPHA_CARBONYL__CH2__TO__X
+      - PRIMARY_OH__CH2OH__TO__X
+      sugar_mask: false
+    per_rule_overrides:
+      RING_SP3__CH__TO__X:
+        max_sites_per_parent: 6
+      ALPHA_CARBONYL__CH2__TO__X:
+        max_sites_per_parent: 3
+      COOH__TO__CX:
+        max_sites_per_parent: 2
+      PRIMARY_OH__CH2OH__TO__X:
+        max_sites_per_parent: 3
+  alkaloid:
+    description: N-containing heterocyclic natural products
+    molecule_count: 4287
+    enabled: true
+    k1:
+      include_rules:
+      - RING_SP2__CH__TO__X
+      - COOH__TO__CX
+      - RING_SP3__CH__TO__X
+      sugar_mask: false
+    k2:
+      include_rules:
+      - RING_SP2__CH__TO__X
+      - COOH__TO__CX
+      - RING_SP3__CH__TO__X
+      - ALPHA_CARBONYL__CH2__TO__X
+      sugar_mask: false
+    per_rule_overrides:
+      RING_SP2__CH__TO__X:
+        max_sites_per_parent: 10
+      RING_SP3__CH__TO__X:
+        max_sites_per_parent: 4
+      ALPHA_CARBONYL__CH2__TO__X:
+        max_sites_per_parent: 4
+      COOH__TO__CX:
+        max_sites_per_parent: 4
+      PRIMARY_OH__CH2OH__TO__X:
+        enabled: false
+  polyphenol:
+    description: Flavonoids, lignans, phenylpropanoids, coumarins
+    molecule_count: 4047
+    enabled: true
+    k1:
+      include_rules:
+      - RING_SP2__CH__TO__X
+      - RING_SP3__CH__TO__X
+      - COOH__TO__CX
+      sugar_mask: false
+    k2:
+      include_rules:
+      - RING_SP2__CH__TO__X
+      - RING_SP3__CH__TO__X
+      - COOH__TO__CX
+      sugar_mask: false
+    per_rule_overrides:
+      RING_SP2__CH__TO__X:
+        max_sites_per_parent: 12
+      COOH__TO__CX:
+        max_sites_per_parent: 3
+      PRIMARY_OH__CH2OH__TO__X:
+        enabled: false
+  glycoside:
+    description: Glycosides with aglycone + sugar moieties
+    molecule_count: 22873
+    enabled: true
+    k1:
+      include_rules:
+      - RING_SP2__CH__TO__X
+      - RING_SP3__CH__TO__X
+      - COOH__TO__CX
+      sugar_mask: true
+    k2:
+      include_rules:
+      - RING_SP2__CH__TO__X
+      - RING_SP3__CH__TO__X
+      - COOH__TO__CX
+      sugar_mask: true
+    per_rule_overrides:
+      RING_SP2__CH__TO__X:
+        exclude_sugar_like: true
+      RING_SP3__CH__TO__X:
+        exclude_sugar_like: true
+      COOH__TO__CX:
+        exclude_sugar_like: true
+      PRIMARY_OH__CH2OH__TO__X:
+        enabled: false
+  polysaccharide:
+    description: Oligosaccharides and polysaccharides
+    molecule_count: 265
+    enabled: false
+    k1:
+      include_rules: []
+      sugar_mask: false
+    k2:
+      include_rules: []
+      sugar_mask: false
+  lipid:
+    description: Fatty acids, glycerides, phospholipids
+    molecule_count: 18
+    enabled: true
+    k1:
+      include_rules:
+      - COOH__TO__CX
+      - ALPHA_CARBONYL__CH2__TO__X
+      - PRIMARY_OH__CH2OH__TO__X
+      sugar_mask: false
+    k2:
+      include_rules:
+      - COOH__TO__CX
+      - ALPHA_CARBONYL__CH2__TO__X
+      - PRIMARY_OH__CH2OH__TO__X
+      sugar_mask: false
+    per_rule_overrides:
+      COOH__TO__CX:
+        max_sites_per_parent: 3
+      ALPHA_CARBONYL__CH2__TO__X:
+        max_sites_per_parent: 3
+      PRIMARY_OH__CH2OH__TO__X:
+        max_sites_per_parent: 3
+      RING_SP2__CH__TO__X:
+        enabled: false
+      RING_SP3__CH__TO__X:
+        enabled: false
+  aa_peptide:
+    description: Amino acids, peptides, small proteins
+    molecule_count: 3890
+    enabled: true
+    k1:
+      include_rules:
+      - RING_SP2__CH__TO__X
+      - COOH__TO__CX
+      sugar_mask: false
+    k2:
+      include_rules:
+      - RING_SP2__CH__TO__X
+      - COOH__TO__CX
+      - ALPHA_CARBONYL__CH2__TO__X
+      sugar_mask: false
+    per_rule_overrides:
+      RING_SP2__CH__TO__X:
+        max_sites_per_parent: 2
+      COOH__TO__CX:
+        max_sites_per_parent: 2
+      ALPHA_CARBONYL__CH2__TO__X:
+        max_sites_per_parent: 2
+      RING_SP3__CH__TO__X:
+        enabled: false
+      PRIMARY_OH__CH2OH__TO__X:
+        enabled: false
+  other:
+    description: Unclassified natural products
+    molecule_count: 4262
+    enabled: true
+    k1:
+      include_rules:
+      - RING_SP2__CH__TO__X
+      - COOH__TO__CX
+      sugar_mask: false
+    k2:
+      include_rules:
+      - RING_SP2__CH__TO__X
+      - COOH__TO__CX
+      - RING_SP3__CH__TO__X
+      sugar_mask: false
+    per_rule_overrides:
+      RING_SP2__CH__TO__X:
+        max_sites_per_parent: 8
+      COOH__TO__CX:
+        max_sites_per_parent: 3
