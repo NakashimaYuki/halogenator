@@ -4,109 +4,307 @@
     "total_rows": 1000000,
     "sample_size": 1000,
     "phenolic_oh": {
-      "mean": 3.685,
+      "mean": 3.818,
       "median": 2.0,
-      "std": 3.383456073307292,
-      "max": 16,
+      "std": 3.549771260236355,
+      "max": 17,
       "min": 0
     },
     "mol_weight": {
-      "mean": 618.7134780000002,
-      "std": 200.79560767038095
+      "mean": 616.3165800000003,
+      "std": 207.71978671357633
     },
     "complexity_score": {
-      "mean": 25.027,
+      "mean": 27.178,
       "median": 4.0,
-      "max": 256.0
+      "max": 289.0
     },
-    "predicted_products_per_mol": 75.081
+    "predicted_products_per_mol": 81.534
   },
   {
     "chunk_id": 1,
     "total_rows": 1000000,
     "sample_size": 1000,
     "phenolic_oh": {
-      "mean": 4.243,
-      "median": 3.0,
-      "std": 3.2863278899099524,
-      "max": 16,
+      "mean": 4.521,
+      "median": 4.0,
+      "std": 3.367426168455665,
+      "max": 15,
       "min": 0
     },
     "mol_weight": {
-      "mean": 630.5698380000002,
-      "std": 197.27835956475758
+      "mean": 648.3809130000002,
+      "std": 202.86419262673604
     },
     "complexity_score": {
-      "mean": 28.803,
-      "median": 9.0,
-      "max": 256.0
+      "mean": 31.779,
+      "median": 16.0,
+      "max": 225.0
     },
-    "predicted_products_per_mol": 86.409
+    "predicted_products_per_mol": 95.337
   },
   {
     "chunk_id": 2,
     "total_rows": 1000000,
     "sample_size": 1000,
     "phenolic_oh": {
-      "mean": 12.597,
-      "median": 12.0,
-      "std": 9.457197840798298,
+      "mean": 12.911,
+      "median": 13.0,
+      "std": 9.600160363243939,
       "max": 33,
       "min": 0
     },
     "mol_weight": {
-      "mean": 1161.570441,
-      "std": 580.1765673201566
+      "mean": 1179.0174000000002,
+      "std": 599.0907785466653
     },
     "complexity_score": {
-      "mean": 248.123,
-      "median": 144.0,
+      "mean": 258.857,
+      "median": 169.0,
       "max": 1089.0
     },
-    "predicted_products_per_mol": 744.3689999999999
+    "predicted_products_per_mol": 776.5710000000001
   },
   {
     "chunk_id": 3,
     "total_rows": 1000000,
     "sample_size": 1000,
     "phenolic_oh": {
-      "mean": 6.635,
+      "mean": 7.062,
       "median": 3.0,
-      "std": 7.8714531695234005,
-      "max": 36,
+      "std": 8.540852182305931,
+      "max": 50,
       "min": 0
     },
     "mol_weight": {
-      "mean": 798.9228830000002,
-      "std": 490.97580193430196
+      "mean": 828.856814,
+      "std": 535.8928447461084
     },
     "complexity_score": {
-      "mean": 105.983,
+      "mean": 122.818,
       "median": 9.0,
-      "max": 1296.0
+      "max": 2500.0
     },
-    "predicted_products_per_mol": 317.949
+    "predicted_products_per_mol": 368.454
   },
   {
     "chunk_id": 4,
     "total_rows": 1000000,
     "sample_size": 1000,
     "phenolic_oh": {
-      "mean": 15.244,
+      "mean": 15.659,
       "median": 7.0,
-      "std": 15.728651054683615,
+      "std": 15.977318892730407,
       "max": 51,
       "min": 0
     },
     "mol_weight": {
-      "mean": 1286.602937999998,
-      "std": 926.9287204174004
+      "mean": 1317.296703999998,
+      "std": 945.091303398429
     },
     "complexity_score": {
-      "mean": 479.77,
+      "mean": 500.479,
       "median": 49.0,
       "max": 2601.0
     },
-    "predicted_products_per_mol": 1439.31
+    "predicted_products_per_mol": 1501.437
+  },
+  {
+    "chunk_id": 5,
+    "total_rows": 1000000,
+    "sample_size": 1000,
+    "phenolic_oh": {
+      "mean": 9.872,
+      "median": 7.0,
+      "std": 7.473795287536313,
+      "max": 35,
+      "min": 0
+    },
+    "mol_weight": {
+      "mean": 942.2451570000004,
+      "std": 394.8619503495044
+    },
+    "complexity_score": {
+      "mean": 153.314,
+      "median": 49.0,
+      "max": 1225.0
+    },
+    "predicted_products_per_mol": 459.942
+  },
+  {
+    "chunk_id": 6,
+    "total_rows": 1000000,
+    "sample_size": 1000,
+    "phenolic_oh": {
+      "mean": 13.988,
+      "median": 11.0,
+      "std": 11.315469764883826,
+      "max": 46,
+      "min": 0
+    },
+    "mol_weight": {
+      "mean": 1284.8072429999997,
+      "std": 615.8100729982929
+    },
+    "complexity_score": {
+      "mean": 323.704,
+      "median": 121.0,
+      "max": 2116.0
+    },
+    "predicted_products_per_mol": 971.1120000000001
+  },
+  {
+    "chunk_id": 7,
+    "total_rows": 1000000,
+    "sample_size": 1000,
+    "phenolic_oh": {
+      "mean": 5.22,
+      "median": 3.0,
+      "std": 6.315979733976352,
+      "max": 69,
+      "min": 0
+    },
+    "mol_weight": {
+      "mean": 660.5986710000001,
+      "std": 381.94712284173033
+    },
+    "complexity_score": {
+      "mean": 67.14,
+      "median": 9.0,
+      "max": 4761.0
+    },
+    "predicted_products_per_mol": 201.42000000000002
+  },
+  {
+    "chunk_id": 8,
+    "total_rows": 1000000,
+    "sample_size": 1000,
+    "phenolic_oh": {
+      "mean": 4.4,
+      "median": 3.0,
+      "std": 5.397036223706489,
+      "max": 36,
+      "min": 0
+    },
+    "mol_weight": {
+      "mean": 645.311507,
+      "std": 353.48007158750755
+    },
+    "complexity_score": {
+      "mean": 48.488,
+      "median": 9.0,
+      "max": 1296.0
+    },
+    "predicted_products_per_mol": 145.464
+  },
+  {
+    "chunk_id": 9,
+    "total_rows": 1000000,
+    "sample_size": 1000,
+    "phenolic_oh": {
+      "mean": 6.196,
+      "median": 3.0,
+      "std": 8.15828315272276,
+      "max": 43,
+      "min": 0
+    },
+    "mol_weight": {
+      "mean": 763.4802639999999,
+      "std": 476.28565854849694
+    },
+    "complexity_score": {
+      "mean": 104.948,
+      "median": 9.0,
+      "max": 1849.0
+    },
+    "predicted_products_per_mol": 314.844
+  },
+  {
+    "chunk_id": 10,
+    "total_rows": 1000000,
+    "sample_size": 1000,
+    "phenolic_oh": {
+      "mean": 4.469,
+      "median": 3.0,
+      "std": 4.138724320367328,
+      "max": 26,
+      "min": 0
+    },
+    "mol_weight": {
+      "mean": 723.5119730000002,
+      "std": 270.7693032346805
+    },
+    "complexity_score": {
+      "mean": 37.101,
+      "median": 9.0,
+      "max": 676.0
+    },
+    "predicted_products_per_mol": 111.303
+  },
+  {
+    "chunk_id": 11,
+    "total_rows": 1000000,
+    "sample_size": 1000,
+    "phenolic_oh": {
+      "mean": 7.472,
+      "median": 4.0,
+      "std": 7.728338501903239,
+      "max": 33,
+      "min": 0
+    },
+    "mol_weight": {
+      "mean": 882.6607590000003,
+      "std": 437.45204994677624
+    },
+    "complexity_score": {
+      "mean": 115.558,
+      "median": 16.0,
+      "max": 1089.0
+    },
+    "predicted_products_per_mol": 346.67400000000004
+  },
+  {
+    "chunk_id": 12,
+    "total_rows": 1000000,
+    "sample_size": 1000,
+    "phenolic_oh": {
+      "mean": 6.763,
+      "median": 4.0,
+      "std": 7.413961896314278,
+      "max": 26,
+      "min": 0
+    },
+    "mol_weight": {
+      "mean": 859.0943710000004,
+      "std": 426.79418285057443
+    },
+    "complexity_score": {
+      "mean": 100.705,
+      "median": 16.0,
+      "max": 676.0
+    },
+    "predicted_products_per_mol": 302.115
+  },
+  {
+    "chunk_id": 13,
+    "total_rows": 790820,
+    "sample_size": 1000,
+    "phenolic_oh": {
+      "mean": 23.927,
+      "median": 23.0,
+      "std": 19.164176762908443,
+      "max": 57,
+      "min": 0
+    },
+    "mol_weight": {
+      "mean": 1969.1370769999935,
+      "std": 1227.505805385492
+    },
+    "complexity_score": {
+      "mean": 939.767,
+      "median": 529.0,
+      "max": 3249.0
+    },
+    "predicted_products_per_mol": 2819.3010000000004
   }
 ]

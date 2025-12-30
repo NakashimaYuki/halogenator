@@ -91,8 +91,8 @@ def main():
     print("CHUNK COMPLEXITY ANALYSIS")
     print("="*80)
 
-    # Analyze chunks 0-2 (and optionally more)
-    chunks_to_analyze = [0, 1, 2, 3, 4]  # First 5 chunks
+    # Analyze all 14 chunks (0-13)
+    chunks_to_analyze = list(range(14))  # All chunks
 
     all_results = []
     for chunk_id in chunks_to_analyze:
