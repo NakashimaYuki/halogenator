@@ -1,0 +1,1038 @@
+{
+  "actions": [
+    {
+      "type": "move",
+      "source": "ACCEPTANCE_REPORT_2025-11-07.md",
+      "dest": "docs/ACCEPTANCE_REPORT_2025-11-07.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "BLOOM_FILTER_SUCCESS_REPORT.md",
+      "dest": "docs/BLOOM_FILTER_SUCCESS_REPORT.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "BUGFIX_REPORT_20251110.md",
+      "dest": "docs/BUGFIX_REPORT_20251110.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "CODE_REVIEW_FIXES_SUMMARY.md",
+      "dest": "docs/CODE_REVIEW_FIXES_SUMMARY.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "CONTEXT_FOR_NEXT_SESSION.md",
+      "dest": "docs/CONTEXT_FOR_NEXT_SESSION.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "CONTRIBUTING.md",
+      "dest": "docs/CONTRIBUTING.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "CRITICAL_FIX_REQUIRED.md",
+      "dest": "docs/CRITICAL_FIX_REQUIRED.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "CRITICAL_FIX_STATUS.md",
+      "dest": "docs/CRITICAL_FIX_STATUS.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "DIAGNOSTIC_RESULTS_TIMEOUT_INVESTIGATION.md",
+      "dest": "docs/DIAGNOSTIC_RESULTS_TIMEOUT_INVESTIGATION.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "FINAL_K1_K2_SUMMARY_2025-12-11.md",
+      "dest": "docs/FINAL_K1_K2_SUMMARY_2025-12-11.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "FIXES_COMPLETED.md",
+      "dest": "docs/FIXES_COMPLETED.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "FULL_ENUM_SUMMARY.md",
+      "dest": "docs/FULL_ENUM_SUMMARY.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "HALOGEN_RULES_AUDIT_REPORT.md",
+      "dest": "docs/HALOGEN_RULES_AUDIT_REPORT.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "HALOGEN_RULES_INVENTORY.md",
+      "dest": "docs/HALOGEN_RULES_INVENTORY.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "IMPLEMENTATION_COMPLETE_2025-11-07.md",
+      "dest": "docs/IMPLEMENTATION_COMPLETE_2025-11-07.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "IMPLEMENTATION_COMPLETE_NP_HALOGEN_PIPELINE.md",
+      "dest": "docs/IMPLEMENTATION_COMPLETE_NP_HALOGEN_PIPELINE.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "IMPLEMENTATION_COMPLETE_SITE_FINDER_2025-11-11.md",
+      "dest": "docs/IMPLEMENTATION_COMPLETE_SITE_FINDER_2025-11-11.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "IMPLEMENTATION_SUMMARY.md",
+      "dest": "docs/IMPLEMENTATION_SUMMARY.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "K1_ENUMERATION_COMPLETION_REPORT.md",
+      "dest": "docs/K1_ENUMERATION_COMPLETION_REPORT.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "K1_ENUMERATION_FINAL_REPORT.md",
+      "dest": "docs/K1_ENUMERATION_FINAL_REPORT.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "MEDIUM_TEST_DIAGNOSIS.md",
+      "dest": "docs/MEDIUM_TEST_DIAGNOSIS.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "MEMORY_CRISIS_INVESTIGATION_COMPLETE.md",
+      "dest": "docs/MEMORY_CRISIS_INVESTIGATION_COMPLETE.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "MEMORY_CRISIS_RESOLUTION_REPORT.md",
+      "dest": "docs/MEMORY_CRISIS_RESOLUTION_REPORT.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "MICRO_TEST_RESULTS_ANALYSIS.md",
+      "dest": "docs/MICRO_TEST_RESULTS_ANALYSIS.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "NEXT_SESSION_CONTINUATION_2025-12-07.md",
+      "dest": "docs/NEXT_SESSION_CONTINUATION_2025-12-07.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "NEXT_SESSION_CONTINUATION_GUIDE.md",
+      "dest": "docs/NEXT_SESSION_CONTINUATION_GUIDE.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "NPLIKE_LIBRARY_REPORT_V2.md",
+      "dest": "docs/NPLIKE_LIBRARY_REPORT_V2.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "NP_CLASSIFICATION_OVERLAP_REPORT.md",
+      "dest": "docs/NP_CLASSIFICATION_OVERLAP_REPORT.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "NP_CLASSIFICATION_QUICK_START.md",
+      "dest": "docs/NP_CLASSIFICATION_QUICK_START.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "NP_CLASSIFICATION_V2_FIXES.md",
+      "dest": "docs/NP_CLASSIFICATION_V2_FIXES.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "NP_CLASSIFICATION_V2_IMPLEMENTATION.md",
+      "dest": "docs/NP_CLASSIFICATION_V2_IMPLEMENTATION.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "NP_PIPELINE_ISSUES_AND_SOLUTIONS.md",
+      "dest": "docs/NP_PIPELINE_ISSUES_AND_SOLUTIONS.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PARALLEL_MECHANISMS_COMPARISON.md",
+      "dest": "docs/PARALLEL_MECHANISMS_COMPARISON.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PART_AB_IMPLEMENTATION_STATUS.md",
+      "dest": "docs/PART_AB_IMPLEMENTATION_STATUS.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PART_B_COMPLETION_REPORT_2025-11-10.md",
+      "dest": "docs/PART_B_COMPLETION_REPORT_2025-11-10.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PART_B_QUICK_GUIDE.md",
+      "dest": "docs/PART_B_QUICK_GUIDE.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PERFORMANCE_REPORT.md",
+      "dest": "docs/PERFORMANCE_REPORT.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PHASE_1-3_COMPLETION_REPORT.md",
+      "dest": "docs/PHASE_1-3_COMPLETION_REPORT.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PIPELINE_RESUME_GUIDE.md",
+      "dest": "docs/PIPELINE_RESUME_GUIDE.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PocReport_aa_peptide_k2.md",
+      "dest": "docs/PocReport_aa_peptide_k2.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PocReport_alkaloid_k1.md",
+      "dest": "docs/PocReport_alkaloid_k1.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PocReport_alkaloid_k2.md",
+      "dest": "docs/PocReport_alkaloid_k2.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PocReport_glycoside_k2.md",
+      "dest": "docs/PocReport_glycoside_k2.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PocReport_lipid_k1.md",
+      "dest": "docs/PocReport_lipid_k1.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PocReport_lipid_k2.md",
+      "dest": "docs/PocReport_lipid_k2.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PocReport_polyphenol_k1.md",
+      "dest": "docs/PocReport_polyphenol_k1.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PocReport_polyphenol_k2.md",
+      "dest": "docs/PocReport_polyphenol_k2.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PocReport_terpenoid_k2.md",
+      "dest": "docs/PocReport_terpenoid_k2.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "POC_ANALYSIS_PERMISSIVE_STRATEGY.md",
+      "dest": "docs/POC_ANALYSIS_PERMISSIVE_STRATEGY.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "POC_NO_LIMITS_VALIDATION_REPORT.md",
+      "dest": "docs/POC_NO_LIMITS_VALIDATION_REPORT.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PRODUCT_COUNT_DIFFERENCE_ANALYSIS.md",
+      "dest": "docs/PRODUCT_COUNT_DIFFERENCE_ANALYSIS.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PR_A_ATOM_MAPPING_DESIGN.md",
+      "dest": "docs/PR_A_ATOM_MAPPING_DESIGN.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PR_A_IMPLEMENTATION_PROGRESS_2025-11-11.md",
+      "dest": "docs/PR_A_IMPLEMENTATION_PROGRESS_2025-11-11.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "PR_A_REVISED_STRATEGY.md",
+      "dest": "docs/PR_A_REVISED_STRATEGY.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "RERUN_COMPARISON_PREDICTION.md",
+      "dest": "docs/RERUN_COMPARISON_PREDICTION.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "RERUN_RESULTS_COMPARISON.md",
+      "dest": "docs/RERUN_RESULTS_COMPARISON.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "ROOT_CAUSE_ANALYSIS_MEMORY_CRISIS.md",
+      "dest": "docs/ROOT_CAUSE_ANALYSIS_MEMORY_CRISIS.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SCHEMA_FIX_AND_TERPENOID_K2_SUCCESS.md",
+      "dest": "docs/SCHEMA_FIX_AND_TERPENOID_K2_SUCCESS.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SESSION_COMPLETION_REPORT_2025-12-10.md",
+      "dest": "docs/SESSION_COMPLETION_REPORT_2025-12-10.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SESSION_CONTINUATION_ALPHA_CARBONYL_DEBUG.md",
+      "dest": "docs/SESSION_CONTINUATION_ALPHA_CARBONYL_DEBUG.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SESSION_HANDOFF_BATCH_PIPELINE_AND_CLEANUP.md",
+      "dest": "docs/SESSION_HANDOFF_BATCH_PIPELINE_AND_CLEANUP.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SESSION_HANDOFF_MEMORY_CRISIS_2025-12-22.md",
+      "dest": "docs/SESSION_HANDOFF_MEMORY_CRISIS_2025-12-22.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SESSION_HANDOFF_MEMORY_DEEP_INVESTIGATION.md",
+      "dest": "docs/SESSION_HANDOFF_MEMORY_DEEP_INVESTIGATION.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SESSION_HANDOFF_NP_CLASSIFICATION_V2_AND_PARALLEL_ENUM.md",
+      "dest": "docs/SESSION_HANDOFF_NP_CLASSIFICATION_V2_AND_PARALLEL_ENUM.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SESSION_HANDOFF_OPTIMIZATION_PHASE.md",
+      "dest": "docs/SESSION_HANDOFF_OPTIMIZATION_PHASE.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SESSION_HANDOFF_SUGAR_MASK_FIX_2025-12-09.md",
+      "dest": "docs/SESSION_HANDOFF_SUGAR_MASK_FIX_2025-12-09.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SESSION_HANDOFF_TRANSFORM_PIPELINE_2025-12-13.md",
+      "dest": "docs/SESSION_HANDOFF_TRANSFORM_PIPELINE_2025-12-13.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SESSION_HANDOFF_TRANSFORM_PIPELINE_2025-12-20.md",
+      "dest": "docs/SESSION_HANDOFF_TRANSFORM_PIPELINE_2025-12-20.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SESSION_REPORT_TRANSFORMS_AND_TERPENOID_K2.md",
+      "dest": "docs/SESSION_REPORT_TRANSFORMS_AND_TERPENOID_K2.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SESSION_SUMMARY_2025-12-05.md",
+      "dest": "docs/SESSION_SUMMARY_2025-12-05.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SITE_FINDER_VALIDATION_REPORT.md",
+      "dest": "docs/SITE_FINDER_VALIDATION_REPORT.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SITE_OVERLAY_PROBLEM_REPORT.md",
+      "dest": "docs/SITE_OVERLAY_PROBLEM_REPORT.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SOLUTION_VALIDATED_PRODUCTION_READY.md",
+      "dest": "docs/SOLUTION_VALIDATED_PRODUCTION_READY.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SUGAR_FILTER_GUIDE.md",
+      "dest": "docs/SUGAR_FILTER_GUIDE.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SUGAR_MASK_FIX_VALIDATION_REPORT.md",
+      "dest": "docs/SUGAR_MASK_FIX_VALIDATION_REPORT.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SUGAR_MASK_IMPLEMENTATION_COMPLETE.md",
+      "dest": "docs/SUGAR_MASK_IMPLEMENTATION_COMPLETE.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "SUGAR_MASK_ROOT_CAUSE_ANALYSIS.md",
+      "dest": "docs/SUGAR_MASK_ROOT_CAUSE_ANALYSIS.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "TASKS_ABC_COMPLETION_REPORT_2025-11-08.md",
+      "dest": "docs/TASKS_ABC_COMPLETION_REPORT_2025-11-08.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "TEST_OBSERVATION_GUIDE.md",
+      "dest": "docs/TEST_OBSERVATION_GUIDE.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "TRANSFORM_PIPELINE_FIX_DESIGN.md",
+      "dest": "docs/TRANSFORM_PIPELINE_FIX_DESIGN.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "TRANSFORM_TASKS_SUMMARY.md",
+      "dest": "docs/TRANSFORM_TASKS_SUMMARY.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "USAGE_GUIDE.md",
+      "dest": "docs/USAGE_GUIDE.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "VERIFICATION_REPORT_2025-11-07.md",
+      "dest": "docs/VERIFICATION_REPORT_2025-11-07.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "VISUALIZATION_BATCH_STATUS.md",
+      "dest": "docs/VISUALIZATION_BATCH_STATUS.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "VISUALIZATION_V2_IMPLEMENTATION_COMPLETE.md",
+      "dest": "docs/VISUALIZATION_V2_IMPLEMENTATION_COMPLETE.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "move",
+      "source": "WORK_REPORT_2025-11-07.md",
+      "dest": "docs/WORK_REPORT_2025-11-07.md",
+      "reason": "Documentation to docs/"
+    },
+    {
+      "type": "delete",
+      "path": "data\\test",
+      "size": 60543984,
+      "reason": "Test/temporary data"
+    },
+    {
+      "type": "delete",
+      "path": "data\\viz",
+      "size": 565275503,
+      "reason": "Test/temporary data"
+    },
+    {
+      "type": "delete",
+      "path": "data\\viz_v2",
+      "size": 33909334,
+      "reason": "Test/temporary data"
+    },
+    {
+      "type": "delete",
+      "path": "data\\viz_base_libs",
+      "size": 14849084,
+      "reason": "Test/temporary data"
+    },
+    {
+      "type": "delete",
+      "path": "tmp",
+      "size": 7470478,
+      "reason": "Test/temporary data"
+    },
+    {
+      "type": "move",
+      "source": "auto_gradual_test.log",
+      "dest": "logs/auto_gradual_test.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "batch_pipeline.log",
+      "dest": "logs/batch_pipeline.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "batch_pipeline_clean_start.log",
+      "dest": "logs/batch_pipeline_clean_start.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "batch_pipeline_restart.log",
+      "dest": "logs/batch_pipeline_restart.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "batch_pipeline_resume.log",
+      "dest": "logs/batch_pipeline_resume.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "bloom_memory_monitor.log",
+      "dest": "logs/bloom_memory_monitor.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "gradual_test_output.log",
+      "dest": "logs/gradual_test_output.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "logsparallel_test_lipid_k2.log",
+      "dest": "logs/logsparallel_test_lipid_k2.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "logsv2_aa_peptide_k1_w16.log",
+      "dest": "logs/logsv2_aa_peptide_k1_w16.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "memory_monitor.log",
+      "dest": "logs/memory_monitor.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "polyphenol_2x_bloom_test.log",
+      "dest": "logs/polyphenol_2x_bloom_test.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "polyphenol_2x_final_memory.log",
+      "dest": "logs/polyphenol_2x_final_memory.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "polyphenol_2x_final_test.log",
+      "dest": "logs/polyphenol_2x_final_test.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "polyphenol_2x_memory_monitor.log",
+      "dest": "logs/polyphenol_2x_memory_monitor.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "production_validation_live.log",
+      "dest": "logs/production_validation_live.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "production_validation_w12_m8.log",
+      "dest": "logs/production_validation_w12_m8.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "rdkit_memory_analysis.log",
+      "dest": "logs/rdkit_memory_analysis.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "stage1_conservative.log",
+      "dest": "logs/stage1_conservative.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "stage1_medium_validation.log",
+      "dest": "logs/stage1_medium_validation.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "terpenoid_k2_direct.log",
+      "dest": "logs/terpenoid_k2_direct.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "terpenoid_k2_final.log",
+      "dest": "logs/terpenoid_k2_final.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "terpenoid_k2_fixed.log",
+      "dest": "logs/terpenoid_k2_fixed.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "test_medium_fixed_output.log",
+      "dest": "logs/test_medium_fixed_output.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "test_micro_output.log",
+      "dest": "logs/test_micro_output.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "test_streaming_fix.log",
+      "dest": "logs/test_streaming_fix.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "transform_pipeline.log",
+      "dest": "logs/transform_pipeline.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "transform_pipeline_aa_peptide_test.log",
+      "dest": "logs/transform_pipeline_aa_peptide_test.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "transform_pipeline_final.log",
+      "dest": "logs/transform_pipeline_final.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "transform_pipeline_full.log",
+      "dest": "logs/transform_pipeline_full.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "transform_pipeline_restart.log",
+      "dest": "logs/transform_pipeline_restart.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "transform_pipeline_SAFE.log",
+      "dest": "logs/transform_pipeline_SAFE.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "transform_pipeline_w16.log",
+      "dest": "logs/transform_pipeline_w16.log",
+      "reason": "Log to logs/"
+    },
+    {
+      "type": "move",
+      "source": "analyze_k1_f_details.py",
+      "dest": "scripts/diagnosis/analyze_k1_f_details.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "analyze_naringenin_structure.py",
+      "dest": "scripts/diagnosis/analyze_naringenin_structure.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "analyze_terpenoid_classification.py",
+      "dest": "scripts/diagnosis/analyze_terpenoid_classification.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "apply_buffer_fix_simple.py",
+      "dest": "scripts/archive/apply_buffer_fix_simple.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "apply_writer_fix.py",
+      "dest": "scripts/archive/apply_writer_fix.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "batch_transform_pipeline.py",
+      "dest": "scripts/production/batch_transform_pipeline.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "browse_hierarchical_output.py",
+      "dest": "scripts/archive/browse_hierarchical_output.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "check_flavone_records.py",
+      "dest": "scripts/archive/check_flavone_records.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "check_raw_fields.py",
+      "dest": "scripts/archive/check_raw_fields.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "compare_all_classes_metadata.py",
+      "dest": "scripts/archive/compare_all_classes_metadata.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "create_poc_test_set.py",
+      "dest": "scripts/archive/create_poc_test_set.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "debug_carbonyl.py",
+      "dest": "scripts/archive/debug_carbonyl.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "debug_config.py",
+      "dest": "scripts/archive/debug_config.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "debug_r2b_detailed.py",
+      "dest": "scripts/archive/debug_r2b_detailed.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "debug_r2_sites.py",
+      "dest": "scripts/archive/debug_r2_sites.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "debug_r6.py",
+      "dest": "scripts/archive/debug_r6.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "debug_r6_execution.py",
+      "dest": "scripts/archive/debug_r6_execution.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "draw.py",
+      "dest": "scripts/archive/draw.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "fix_indentation.py",
+      "dest": "scripts/archive/fix_indentation.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "monitor_test_progress.py",
+      "dest": "scripts/archive/monitor_test_progress.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "optimize_parameters.py",
+      "dest": "scripts/production/optimize_parameters.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "run_gradual_tests_auto.py",
+      "dest": "scripts/archive/run_gradual_tests_auto.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_8_prenylnaringenin_regression.py",
+      "dest": "scripts/archive/test_8_prenylnaringenin_regression.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_alpha_diagnostic.py",
+      "dest": "scripts/archive/test_alpha_diagnostic.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_buffer_fix.py",
+      "dest": "scripts/archive/test_buffer_fix.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_cfg_debug.py",
+      "dest": "scripts/archive/test_cfg_debug.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_config_load.py",
+      "dest": "scripts/archive/test_config_load.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_config_validation.py",
+      "dest": "scripts/archive/test_config_validation.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_g1_dedup_impact_verification.py",
+      "dest": "scripts/archive/test_g1_dedup_impact_verification.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_g1_k2_distribution_analysis.py",
+      "dest": "scripts/archive/test_g1_k2_distribution_analysis.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_medium_fixed.py",
+      "dest": "scripts/archive/test_medium_fixed.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_micro_manual.py",
+      "dest": "scripts/archive/test_micro_manual.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_micro_simple.py",
+      "dest": "scripts/archive/test_micro_simple.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_p0_fixes_validation.py",
+      "dest": "scripts/archive/test_p0_fixes_validation.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_pr2_complete_flow.py",
+      "dest": "scripts/archive/test_pr2_complete_flow.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_r2b_beta_position.py",
+      "dest": "scripts/archive/test_r2b_beta_position.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_r2b_configs.py",
+      "dest": "scripts/archive/test_r2b_configs.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_r2b_debug.py",
+      "dest": "scripts/archive/test_r2b_debug.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_r2b_naringenin_diagnostic.py",
+      "dest": "scripts/archive/test_r2b_naringenin_diagnostic.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_r2b_ring_distance.py",
+      "dest": "scripts/archive/test_r2b_ring_distance.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_r6_debug.py",
+      "dest": "scripts/archive/test_r6_debug.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_regression_suite.py",
+      "dest": "scripts/archive/test_regression_suite.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_simple_direct.py",
+      "dest": "scripts/archive/test_simple_direct.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_simple_r6.py",
+      "dest": "scripts/archive/test_simple_r6.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_site_atoms.py",
+      "dest": "scripts/archive/test_site_atoms.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "test_strict_hierarchy.py",
+      "dest": "scripts/archive/test_strict_hierarchy.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "validate_fix_gradual.py",
+      "dest": "scripts/archive/validate_fix_gradual.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "verify_k1_rules.py",
+      "dest": "scripts/archive/verify_k1_rules.py",
+      "reason": "Script organization"
+    },
+    {
+      "type": "move",
+      "source": "verify_terpenoid_samples.py",
+      "dest": "scripts/archive/verify_terpenoid_samples.py",
+      "reason": "Script organization"
+    }
+  ],
+  "success_count": 172,
+  "error_count": 0
+}

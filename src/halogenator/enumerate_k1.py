@@ -8,13 +8,19 @@ from .rules import build_reactions
 from .sites import (
     aromatic_CH_indices, c_ring_indices, symmetry_groups,
     get_ring_tag_for_atom, ensure_ready, is_c_ring_site_ready,
-    flavonoid_ring_label, is_carbonyl_carbon, c_ring_sp2_CH_sites, c_ring_sp3_CH2_flavanone_sites
+    flavonoid_ring_label, is_carbonyl_carbon, c_ring_sp2_CH_sites, c_ring_sp3_CH2_flavanone_sites,
+    filter_sites_with_mask  # Unified site filtering utility for sugar_mask
 )
 from .reactions import apply_single_site_halogenation
 from .qc import sanitize_ok, basic_descriptors, pains_flags
 from .dedupe import dedupe_with_props
 from .standardize import to_inchikey
-from .enumerate_k import _run_reaction_safely, _validate_totals_pivots_consistency, QAAggregator, _compute_totals_from_aggregator, emit_product
+from .enumerate_k import (
+    _run_reaction_safely, _validate_totals_pivots_consistency, QAAggregator,
+    _compute_totals_from_aggregator, emit_product,
+    _find_reaction_matches, _match_hits_mask,  # Sugar_mask filtering for reaction-based rules
+    ISOTOPE_TAG, _find_isotope_tagged_site, _clear_isotope_tags, _iter_reaction_mols  # Isotope tagging for site-specific reactions
+)
 from .sites_methyl import enumerate_methyl_sites
 from .rules_methyl import apply_methyl_step, validate_methyl_halogen, apply_methyl_macro
 from .guard import rdkit_guard
@@ -93,7 +99,8 @@ def enumerate_k1_with_stats(parent_smi: str, cfg, stream_shape: str = 'legacy') 
         'constraints': cfg.constraints,
         'qc': cfg.qc_cfg,
         'standardize': cfg.std_cfg,
-        'rules_cfg': cfg.rules_cfg
+        'rules_cfg': cfg.rules_cfg,
+        'sugar_cfg': cfg.sugar_cfg  # CRITICAL: Pass sugar_cfg for sugar_mask filtering
     }
     
     # Initialize pivot aggregator for M2 statistics (version 2 format)
@@ -291,34 +298,84 @@ def _enumerate_k1_halogenation_with_stats_tracking(
 
     products = []
     reactions = build_reactions()
-    
-    # Step 1: Apply reaction-based rules (R1, R3, R4, R5) with proper attempt boundaries
-    for rule in ['R1', 'R3', 'R4', 'R5']:
-        if rule in rules and rule in reactions:
-            for halogen in halogens:
-                # Each (rule, halogen) combination is one attempt
-                attempt_products_count = 0
-                attempt_qa_events = {}
-                
-                if halogen not in reactions[rule]:
-                    # Record failed attempt due to missing reaction template
-                    if aggregator:
-                        attempt_qa_events['template_unsupported'] = 1
-                        aggregator.record_attempt_result(rule, halogen, 1, 0, attempt_qa_events,
-                                                       k_ops=None, k_atoms=None)
-                    stats_dict['template_unsupported'] += 1
-                    continue
-                
-                rxn = reactions[rule][halogen]
-                local_seen = set()  # Local deduplication per (rule, halogen)
-                
-                # Run reaction safely (without passing aggregator to avoid double counting)
-                reaction_products = _run_reaction_safely(rxn, (parent_mol,), rule, halogen, stats_dict, None, current_k=1)
-                
-                for product_set in reaction_products:
-                    for product_mol in product_set:
-                        if product_mol is not None:
-                            # Sanitize product molecule (lightweight first, full if needed)
+
+    # Step 1: Apply reaction-based rules with proper attempt boundaries
+    # Process all reaction-based rules from rules parameter (including semantic IDs like ALPHA_CARBONYL)
+    reaction_based_rules = [r for r in rules if r in reactions]
+    for rule in reaction_based_rules:
+        for halogen in halogens:
+            # Each (rule, halogen) combination is one attempt
+            attempt_products_count = 0
+            attempt_qa_events = {}
+
+            if halogen not in reactions[rule]:
+                # Record failed attempt due to missing reaction template
+                if aggregator:
+                    attempt_qa_events['template_unsupported'] = 1
+                    aggregator.record_attempt_result(rule, halogen, 1, 0, attempt_qa_events,
+                                                   k_ops=None, k_atoms=None)
+                stats_dict['template_unsupported'] += 1
+                continue
+            
+            # Use pre-filtering with sugar_mask (like enumerate_k.py:1868)
+            # This filters out matches that hit sugar ring atoms
+            matches_with_sites, template_unsupported_count, sugar_filtered_count = \
+                _find_reaction_matches(parent_mol, rule, reactions, halogen, sugar_mask)
+
+            if template_unsupported_count > 0:
+                # Template unsupported - already recorded above
+                continue
+
+            # Track sugar_mask filtering statistics
+            if sugar_filtered_count > 0:
+                stats_dict['sugar_mask_filtered'] = stats_dict.get('sugar_mask_filtered', 0) + sugar_filtered_count
+                LOG.debug(f"[{rule}+{halogen}] Sugar_mask filtered {sugar_filtered_count} matches")
+
+            # If no matches remain after sugar filtering, skip this rule+halogen
+            if not matches_with_sites:
+                LOG.debug(f"[{rule}+{halogen}] No matches after sugar_mask filtering, skipping")
+                attempt_qa_events['no_product_matches'] = 1
+                if aggregator:
+                    aggregator.record_attempt_result(rule, halogen, 1, 0, attempt_qa_events,
+                                                   k_ops=None, k_atoms=None)
+                continue
+
+            # ISOTOPE TAGGING STRATEGY: Process each allowed match independently
+            # This ensures we only generate products for sites that passed sugar_mask filtering
+            rxn = reactions[rule][halogen]
+            local_seen = set()  # Local deduplication per (rule, halogen)
+
+            LOG.debug(f"[{rule}+{halogen}] Processing {len(matches_with_sites)} allowed sites with isotope tagging")
+
+            # Process each match independently with isotope tagging (like enumerate_k.py:1944-1993)
+            for site_atom_idx, match in matches_with_sites:
+                try:
+                    # Get ring tag for this site
+                    ring_tag = flavonoid_ring_label(parent_mol, site_atom_idx)
+
+                    # Create a copy and add isotope tag to the reaction site
+                    mol_copy = Chem.RWMol(parent_mol)
+                    site_atom = mol_copy.GetAtomWithIdx(site_atom_idx)
+                    site_atom.SetIsotope(ISOTOPE_TAG)
+
+                    # Run reaction on tagged molecule
+                    reaction_products = rxn.RunReactants((mol_copy,))
+
+                    product_found = False
+                    for product_mol in _iter_reaction_mols(reaction_products):
+                        if product_mol is None:
+                            continue
+
+                        # Find product corresponding to this tagged site
+                        tagged_site_in_product = _find_isotope_tagged_site(
+                            product_mol, halogen, ISOTOPE_TAG
+                        )
+
+                        if tagged_site_in_product is not None:
+                            # Clear isotope tags from product
+                            _clear_isotope_tags(product_mol)
+
+                            # Sanitize product molecule
                             try:
                                 Chem.SanitizeMol(product_mol, sanitizeOps=SanitizeFlags.SANITIZE_PROPERTIES)
                             except Exception:
@@ -326,39 +383,53 @@ def _enumerate_k1_halogenation_with_stats_tracking(
                                     Chem.SanitizeMol(product_mol)
                                 except Exception:
                                     product_mol.UpdatePropertyCache(strict=False)
-                            
-                            # Ensure ring info and properties are ready for downstream operations
+
+                            # Ensure ring info is ready
                             try:
                                 ensure_ready(product_mol)
                             except Exception:
-                                pass  # Continue with potentially incomplete initialization
-                            
+                                pass
+
+                            # Generate canonical SMILES for deduplication
                             try:
                                 product_smiles = Chem.MolToSmiles(product_mol, canonical=True)
                             except Exception:
-                                # fallback: skip local dedup on this product, but keep pipeline alive
                                 product_smiles = None
-                            
+
+                            # Deduplicate within this (rule, halogen) attempt
                             if product_smiles is None or product_smiles not in local_seen:
                                 if product_smiles is not None:
                                     local_seen.add(product_smiles)
+
                                 props = {
                                     'parent_smiles': parent_smiles,
                                     'parent_inchikey': parent_inchikey,
                                     'rule': rule,
-                                    'site_index': None,
+                                    'site_index': site_atom_idx,  # Exact site from isotope tagging
                                     'sym_class': None,
-                                    'ring_tag': None,
+                                    'ring_tag': ring_tag,
                                     'halogen': halogen,
                                     'depth': 1
                                 }
                                 products.append((product_mol, props))
                                 attempt_products_count += 1
-                
-                # Record this attempt result with proper semantics
-                if aggregator:
-                    aggregator.record_attempt_result(rule, halogen, 1, attempt_products_count, attempt_qa_events,
-                                                   k_ops=None, k_atoms=None)
+                                product_found = True
+                                LOG.debug(f"[{rule}+{halogen}] Generated product from site {site_atom_idx}")
+                                break  # Only take first product from this site
+
+                    if not product_found:
+                        # Isotope tagging failed to find product for this site
+                        LOG.debug(f"[{rule}+{halogen}] Isotope tagging failed for site {site_atom_idx}")
+
+                except Exception as e:
+                    # If isotope tagging fails for this site, log and continue to next site
+                    LOG.debug(f"[{rule}+{halogen}] Isotope tagging exception for site {site_atom_idx}: {e}")
+                    continue
+            
+            # Record this attempt result with proper semantics
+            if aggregator:
+                aggregator.record_attempt_result(rule, halogen, 1, attempt_products_count, attempt_qa_events,
+                                               k_ops=None, k_atoms=None)
     
     # Step 2: Apply R2a/R2b rules (separate processing to match k>=2 path)
     if 'R2' in rules:
@@ -382,8 +453,8 @@ def _enumerate_k1_halogenation_with_stats_tracking(
         # R2a: sp2 CH sites in C-ring (controlled by rules_cfg.R2.sp2_CH_in_C_ring)
         if r2_config.get('sp2_CH_in_C_ring', True):
             try:
-                r2a_sites = c_ring_sp2_CH_sites(parent_mol, set())
-                LOG.info("[R2a] Site enumeration: found %d candidates", len(r2a_sites))
+                r2a_sites = c_ring_sp2_CH_sites(parent_mol, sugar_mask)  # Pass sugar_mask to filter sugar ring atoms
+                LOG.info("[R2a] Site enumeration: found %d candidates (after sugar_mask)", len(r2a_sites))
                 if r2a_sites:
                     LOG.debug("[R2a] Sites: %s", r2a_sites[:10])  # Show first 10
 
@@ -433,10 +504,10 @@ def _enumerate_k1_halogenation_with_stats_tracking(
                 sugar_cfg = config.get('sugar_cfg', {})
                 # Request detection information to track strict vs fallback enumeration
                 r2b_sites, r2b_used_fallback = c_ring_sp3_CH2_flavanone_sites(
-                    parent_mol, set(), sugar_cfg, config.get('rules_cfg'),
+                    parent_mol, sugar_mask, sugar_cfg, config.get('rules_cfg'),  # Pass sugar_mask to filter sugar ring atoms
                     return_detection=True
                 )
-                LOG.info("[R2b] Site enumeration: found %d candidates (sugar_cfg.mode=%s, detection=%s)",
+                LOG.info("[R2b] Site enumeration: found %d candidates (after sugar_mask, sugar_cfg.mode=%s, detection=%s)",
                          len(r2b_sites), sugar_cfg.get('mode', 'heuristic'),
                          'fallback' if r2b_used_fallback else 'strict')
                 if r2b_sites:

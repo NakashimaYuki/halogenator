@@ -8,8 +8,10 @@ import sys
 import tempfile
 import shutil
 import yaml
-from typing import Dict, Any
+from pathlib import Path
+from typing import Dict, Any, List
 from .schema import ALL_RULES, ALL_HALOGENS, empty_qa_paths, ensure_qa_paths_compatibility
+from .class_config import load_class_halogen_config, apply_rule_overrides, map_semantic_to_legacy_rules
 
 LOG = logging.getLogger(__name__)
 
@@ -163,14 +165,34 @@ def deep_merge(defaults: Dict[str, Any], user_config: Dict[str, Any]) -> Dict[st
     return result
 
 
-def load_config(config_path: str) -> Dict[str, Any]:
-    """Load configuration from YAML file."""
+def load_config(config_path: str, validate: bool = True) -> Dict[str, Any]:
+    """
+    Load configuration from YAML file with optional validation.
+
+    Args:
+        config_path: Path to YAML configuration file
+        validate: If True, validate configuration schema
+
+    Returns:
+        Configuration dictionary
+    """
     try:
         with open(config_path, 'r', encoding='ascii') as f:
-            return yaml.safe_load(f)
+            config = yaml.safe_load(f)
     except Exception as e:
         print(f"Error loading config {config_path}: {e}")
         sys.exit(1)
+
+    # Validate configuration if requested
+    if validate:
+        try:
+            from .config_validator import validate_and_exit_on_error
+            validate_and_exit_on_error(config, strict=False)
+        except ImportError:
+            # config_validator not available, skip validation
+            pass
+
+    return config
 
 
 def cmd_ingest(config: Dict[str, Any]) -> None:
@@ -1122,11 +1144,18 @@ def cmd_enum(config: Dict[str, Any], args=None, enumerate_k_fn=None, enumerate_k
     
     io_config = config.get('io', {})
     halogens = config.get('halogens', list(ALL_HALOGENS))
-    
+
     # Get k_max from config, only override if user explicitly provided --k
     k_max = config.get('k_max', 2)
     if args and getattr(args, 'k', None) is not None:
         k_max = args.k
+
+    # Print rules matrix showing final effective configuration
+    try:
+        from .config_validator import print_rules_matrix
+        print_rules_matrix(config, verbose=True)
+    except ImportError:
+        pass  # config_validator not available
 
     # Determine input records - priority: explicit smiles_file > subset defaults
     subset = args.subset if args else 'flavonoids'
@@ -1780,6 +1809,139 @@ def configure_system_options(args):
     # (no longer using environment variable)
     if hasattr(args, 'qa_loader_degrade'):
         LOG.debug(f"QA loader degrade mode: {args.qa_loader_degrade}")
+
+
+def cmd_enum_parquet(args=None) -> int:
+    """
+    Run k<=2 halogenation directly from a parquet with smiles/Smiles column.
+    Streams batches to a products.parquet output.
+    """
+    import pandas as pd
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from .enumerate_k import EnumConfig, enumerate_with_stats
+    from .enumerate_k1 import enumerate_k1_with_stats
+    try:
+        from .chem_compat import RDLogger as _rdlog
+        if _rdlog:
+            _rdlog.DisableLog('rdApp.debug')
+            _rdlog.DisableLog('rdApp.info')
+            _rdlog.DisableLog('rdApp.warning')
+    except Exception:
+        pass
+
+    if args is None:
+        return 1
+
+    input_path = Path(args.input_parquet)
+    outdir = Path(args.outdir)
+    outdir.mkdir(parents=True, exist_ok=True)
+    products_path = outdir / "products.parquet"
+
+    k_max = args.k
+
+    # Load per-class configuration if np_class is specified
+    np_class = getattr(args, 'np_class', None)
+    rules_config_path = Path(getattr(args, 'rules_config', '')) if hasattr(args, 'rules_config') and args.rules_config else None
+
+    if np_class:
+        class_cfg = load_class_halogen_config(np_class, k_max, rules_config_path)
+        if not class_cfg.get('enabled', True):
+            LOG.error(f"Class '{np_class}' is disabled in configuration. Exiting.")
+            return 1
+
+        # Use class-specific config
+        halogens = tuple(class_cfg.get('halogens', ["F", "Cl", "Br", "I"]))
+        rules_raw = class_cfg.get('rules', [])
+
+        # Apply per-rule overrides
+        per_rule_overrides = class_cfg.get('per_rule_overrides', {})
+        rules = tuple(map_semantic_to_legacy_rules(apply_rule_overrides(rules_raw, per_rule_overrides)))
+
+        max_sites = class_cfg.get('max_sites_per_parent', -1)
+        sugar_mask_enabled = class_cfg.get('sugar_mask', False)
+
+        LOG.info(f"Using class '{np_class}' config: {len(rules)} rules, sugar_mask={sugar_mask_enabled}")
+    else:
+        # Fallback to CLI args or defaults
+        halogens = tuple(args.halogens or ["F", "Cl", "Br", "I"])
+        rules = tuple(args.rules or [
+            "HALO_ARYL_CH__H__TO__X",
+            "HALO_CARBOXYL__COOH__TO__COX",
+        ])
+        max_sites = -1
+        sugar_mask_enabled = False
+
+    # Build enum config with sugar masking support
+    sugar_cfg = {
+        "mode": "off" if not sugar_mask_enabled else "heuristic",
+        "apply_mask": sugar_mask_enabled
+    }
+
+    constraints = {"enable": True}
+    if max_sites > 0:
+        constraints["max_sites_per_mol"] = max_sites
+
+    enum_cfg = EnumConfig(
+        k_max=k_max,
+        halogens=halogens,
+        rules=rules,
+        constraints=constraints,  # Fixed: use constraints dict with max_sites_per_mol
+        sugar_cfg=sugar_cfg,      # Fixed: use sugar_cfg dict with proper mode
+        pruning_cfg={"use_sqlite_dedup": False},
+        engine_cfg={"rdkit_threads": args.rdkit_threads},
+    )
+
+    LOG.info(f"enum-parquet: k_max={k_max}, halogens={halogens}, rules={rules}")
+    LOG.info(f"Input: {input_path}")
+    LOG.info(f"Output: {products_path}")
+
+    pq_file = pq.ParquetFile(input_path)
+    writer: pq.ParquetWriter = None
+    total_products = 0
+    total_parents = 0
+
+    try:
+        for batch in pq_file.iter_batches(batch_size=args.batch_size):
+            df = batch.to_pandas()
+            smiles_col = "smiles" if "smiles" in df.columns else "Smiles" if "Smiles" in df.columns else None
+            if smiles_col is None:
+                LOG.error("Input missing smiles/Smiles column")
+                break
+
+            records: List[Dict[str, Any]] = []
+            for smi in df[smiles_col].astype(str):
+                if not smi or smi.upper() == "SDF":
+                    continue
+                if k_max == 1:
+                    prods, _ = enumerate_k1_with_stats(smi, enum_cfg, stream_shape="v2")
+                else:
+                    prods, _ = enumerate_with_stats(smi, enum_cfg)
+                records.extend(prods)
+                total_parents += 1
+                if args.max_parents and total_parents >= args.max_parents:
+                    break
+
+            if not records:
+                if args.max_parents and total_parents >= args.max_parents:
+                    break
+                else:
+                    continue
+
+            table = pa.Table.from_pandas(pd.DataFrame(records), preserve_index=False)
+            if writer is None:
+                writer = pq.ParquetWriter(products_path, table.schema)
+            writer.write_table(table)
+            total_products += len(records)
+            LOG.info(f"Batch done: parents={total_parents} products_total={total_products}")
+            if args.max_parents and total_parents >= args.max_parents:
+                break
+    finally:
+        if writer:
+            writer.close()
+
+    LOG.info(f"Complete. Parents processed={total_parents}, products={total_products}")
+    return 0
     
     # Configure stream shape mode (will be passed to enumeration functions)
     if hasattr(args, 'stream_shape'):
@@ -1950,6 +2112,19 @@ def main():
     enum_parser.add_argument('--group-by', dest='group_by', choices=['rule', 'family'], default='rule',
                             help='Aggregation key for by_rule.csv: rule (shows R2a/R2b separately) or family (groups R2a/R2b as R2)')
 
+    # Parquet enumeration command (new)
+    enum_parquet_parser = subparsers.add_parser('enum-parquet', help='Run k<=2 enumeration from a parquet file of parents')
+    enum_parquet_parser.add_argument('--input-parquet', required=True, help='Input parquet with smiles/Smiles column')
+    enum_parquet_parser.add_argument('--outdir', required=True, help='Output directory')
+    enum_parquet_parser.add_argument('--k', type=int, default=1, choices=[1, 2], help='Maximum substitution depth (default:1)')
+    enum_parquet_parser.add_argument('--halogens', nargs='+', default=None, help='Halogens list (default: F Cl Br I)')
+    enum_parquet_parser.add_argument('--rules', nargs='+', default=None, help='Rule IDs (default: R1 R3 R4 R5)')
+    enum_parquet_parser.add_argument('--batch-size', type=int, default=2000, help='Parent batch size (default:2000)')
+    enum_parquet_parser.add_argument('--max-parents', type=int, default=0, help='Optional cap on parents processed (0 = all)')
+    enum_parquet_parser.add_argument('--rdkit-threads', type=int, default=0, help='RDKit threads (0=default)')
+    enum_parquet_parser.add_argument('--np-class', help='NP class name (e.g., terpenoid, alkaloid) - loads config from halogen_rules_by_class.yaml')
+    enum_parquet_parser.add_argument('--rules-config', help='Path to halogen_rules_by_class.yaml (default: configs/halogen_rules_by_class.yaml)')
+
     # ETCM ingest command
     etcm_parser = subparsers.add_parser('etcm-ingest', help='Convert ETCM Excel/CSV to .smi and meta CSV')
     etcm_parser.add_argument('-i', '--input', required=True, help='Input .xlsx or .csv')
@@ -2046,6 +2221,9 @@ def main():
     elif args.command == 'plugin':
         # Plugin management command
         cmd_plugin(args)
+    elif args.command == 'enum-parquet':
+        # Parquet-based enumeration (no external config file needed)
+        cmd_enum_parquet(args)
     else:
         # Load configuration for other commands
         config = load_config(args.config)
