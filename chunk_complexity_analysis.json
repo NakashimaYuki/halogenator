@@ -1,0 +1,112 @@
+[
+  {
+    "chunk_id": 0,
+    "total_rows": 1000000,
+    "sample_size": 1000,
+    "phenolic_oh": {
+      "mean": 3.685,
+      "median": 2.0,
+      "std": 3.383456073307292,
+      "max": 16,
+      "min": 0
+    },
+    "mol_weight": {
+      "mean": 618.7134780000002,
+      "std": 200.79560767038095
+    },
+    "complexity_score": {
+      "mean": 25.027,
+      "median": 4.0,
+      "max": 256.0
+    },
+    "predicted_products_per_mol": 75.081
+  },
+  {
+    "chunk_id": 1,
+    "total_rows": 1000000,
+    "sample_size": 1000,
+    "phenolic_oh": {
+      "mean": 4.243,
+      "median": 3.0,
+      "std": 3.2863278899099524,
+      "max": 16,
+      "min": 0
+    },
+    "mol_weight": {
+      "mean": 630.5698380000002,
+      "std": 197.27835956475758
+    },
+    "complexity_score": {
+      "mean": 28.803,
+      "median": 9.0,
+      "max": 256.0
+    },
+    "predicted_products_per_mol": 86.409
+  },
+  {
+    "chunk_id": 2,
+    "total_rows": 1000000,
+    "sample_size": 1000,
+    "phenolic_oh": {
+      "mean": 12.597,
+      "median": 12.0,
+      "std": 9.457197840798298,
+      "max": 33,
+      "min": 0
+    },
+    "mol_weight": {
+      "mean": 1161.570441,
+      "std": 580.1765673201566
+    },
+    "complexity_score": {
+      "mean": 248.123,
+      "median": 144.0,
+      "max": 1089.0
+    },
+    "predicted_products_per_mol": 744.3689999999999
+  },
+  {
+    "chunk_id": 3,
+    "total_rows": 1000000,
+    "sample_size": 1000,
+    "phenolic_oh": {
+      "mean": 6.635,
+      "median": 3.0,
+      "std": 7.8714531695234005,
+      "max": 36,
+      "min": 0
+    },
+    "mol_weight": {
+      "mean": 798.9228830000002,
+      "std": 490.97580193430196
+    },
+    "complexity_score": {
+      "mean": 105.983,
+      "median": 9.0,
+      "max": 1296.0
+    },
+    "predicted_products_per_mol": 317.949
+  },
+  {
+    "chunk_id": 4,
+    "total_rows": 1000000,
+    "sample_size": 1000,
+    "phenolic_oh": {
+      "mean": 15.244,
+      "median": 7.0,
+      "std": 15.728651054683615,
+      "max": 51,
+      "min": 0
+    },
+    "mol_weight": {
+      "mean": 1286.602937999998,
+      "std": 926.9287204174004
+    },
+    "complexity_score": {
+      "mean": 479.77,
+      "median": 49.0,
+      "max": 2601.0
+    },
+    "predicted_products_per_mol": 1439.31
+  }
+]
