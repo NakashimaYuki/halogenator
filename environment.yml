@@ -1,0 +1,27 @@
+name: halogenator
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - pip
+  # Core scientific computing
+  - numpy>=1.23.0
+  - pandas>=1.5.0
+
+  # Chemistry
+  - rdkit>=2022.9.0
+
+  # Data formats
+  - pyarrow>=10.0.0
+
+  # Configuration
+  - pyyaml>=6.0
+
+  # Visualization (optional but useful)
+  - matplotlib>=3.6.0
+
+  # Additional pip dependencies
+  - pip:
+    # Add any pip-only packages here if needed
+    # - some-pip-package
