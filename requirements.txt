@@ -1,0 +1,16 @@
+# Core dependencies for halogenator project
+# Use with: pip install -r requirements.txt
+
+# Chemistry
+rdkit>=2022.9.5
+
+# Data processing
+pyarrow>=10.0.0
+pandas>=1.5.0
+numpy>=1.23.0
+
+# Configuration
+pyyaml>=6.0
+
+# Visualization
+matplotlib>=3.6.0
