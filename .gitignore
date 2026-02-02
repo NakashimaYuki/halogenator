@@ -171,6 +171,8 @@ check_*.py
 *_report.md
 *_analysis_report.md
 naringenin_r2b_analysis_report.md
+# Allow reports in docs/
+!docs/*_report.md
 
 # OS specific
 .DS_Store

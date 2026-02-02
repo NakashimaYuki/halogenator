@@ -1,0 +1,308 @@
+# Unified transformation rules (halogenation + FG mods)
+# Semantic naming: <GROUP>_<SCOPE>__<FROM>__TO__<TO>
+
+defaults:
+  apply_mode: per_site
+  deduplicate: true
+  restrict_to_phenol: true
+  exclude_sugar_like: true
+  max_sites_per_mol: -1   # -1 = unlimited (per-site mode)
+
+transforms:
+  # ---------------------------------------------------------------------------
+  # Phenolic OH modifications
+  # ---------------------------------------------------------------------------
+  - name: FG_PHENOL_OH__OH__TO__OMe
+    code: FG_PHENOL_OH__OH__TO__OMe
+    legacy_rule_id: null
+    label: "OH->OMe"
+    family: phenol_mod
+    scope_classes: ["polyphenol", "terpenoid"]
+    query_smarts: "[c:1][OX2H:2]"
+    smirks: "[c:1][OX2H:2]>>[c:1][O:2]C"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "O"
+
+  - name: FG_PHENOL_OH__OH__TO__NH2
+    code: FG_PHENOL_OH__OH__TO__NH2
+    legacy_rule_id: null
+    label: "OH->NH2"
+    family: phenol_mod
+    scope_classes: ["polyphenol", "terpenoid"]
+    query_smarts: "[c:1][OX2H:2]"
+    smirks: "[c:1][OX2H:2]>>[c:1][N:2]([H])[H]"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "N"
+
+  - name: FG_PHENOL_OH__OH__TO__CH2CH2NH2
+    code: FG_PHENOL_OH__OH__TO__CH2CH2NH2
+    legacy_rule_id: null
+    label: "OH->CH2CH2NH2"
+    family: phenol_mod
+    scope_classes: ["polyphenol", "terpenoid"]
+    query_smarts: "[c:1][OX2H:2]"
+    smirks: "[c:1][OX2H:2]>>[c:1]CCN"
+    highlight_mapnums: [1]
+    product_highlight_symbol: "C"
+
+  - name: FG_PHENOL_OH__OH__TO__CH2CH2COOH
+    code: FG_PHENOL_OH__OH__TO__CH2CH2COOH
+    legacy_rule_id: null
+    label: "OH->CH2CH2COOH"
+    family: phenol_mod
+    scope_classes: ["polyphenol", "terpenoid"]
+    query_smarts: "[c:1][OX2H:2]"
+    smirks: "[c:1][OX2H:2]>>[c:1]CCC(=O)O"
+    highlight_mapnums: [1]
+    product_highlight_symbol: "C"
+
+  # Aliases for backward compatibility
+  - name: OH_to_OMe
+    code: FG_PHENOL_OH__OH__TO__OMe
+    legacy_rule_id: null
+    label: "OH->OMe (alias)"
+    query_smarts: "[c:1][OX2H:2]"
+    smirks: "[c:1][OX2H:2]>>[c:1][O:2]C"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "O"
+
+  - name: OH_to_NH2
+    code: FG_PHENOL_OH__OH__TO__NH2
+    legacy_rule_id: null
+    label: "OH->NH2 (alias)"
+    query_smarts: "[c:1][OX2H:2]"
+    smirks: "[c:1][OX2H:2]>>[c:1][N:2]([H])[H]"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "N"
+
+  # ---------------------------------------------------------------------------
+  # Aromatic amine modifications (anilines)
+  # ---------------------------------------------------------------------------
+  - name: FG_AMINE_AR__NH2__TO__F
+    code: FG_AMINE_AR__NH2__TO__F
+    legacy_rule_id: null
+    label: "Ar-NH2->F"
+    family: amine_mod
+    scope_classes: ["alkaloid", "aa_peptide", "polyphenol"]
+    query_smarts: "[c:1][NX3;H2:2]"
+    smirks: "[c:1][NX3;H2:2]>>[c:1][F]"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "F"
+
+  - name: FG_AMINE_AR__NH2__TO__Cl
+    code: FG_AMINE_AR__NH2__TO__Cl
+    legacy_rule_id: null
+    label: "Ar-NH2->Cl"
+    family: amine_mod
+    scope_classes: ["alkaloid", "aa_peptide", "polyphenol"]
+    query_smarts: "[c:1][NX3;H2:2]"
+    smirks: "[c:1][NX3;H2:2]>>[c:1][Cl]"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "Cl"
+
+  - name: FG_AMINE_AR__NH2__TO__Br
+    code: FG_AMINE_AR__NH2__TO__Br
+    legacy_rule_id: null
+    label: "Ar-NH2->Br"
+    family: amine_mod
+    scope_classes: ["alkaloid", "aa_peptide", "polyphenol"]
+    query_smarts: "[c:1][NX3;H2:2]"
+    smirks: "[c:1][NX3;H2:2]>>[c:1][Br]"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "Br"
+
+  - name: FG_AMINE_AR__NH2__TO__I
+    code: FG_AMINE_AR__NH2__TO__I
+    legacy_rule_id: null
+    label: "Ar-NH2->I"
+    family: amine_mod
+    scope_classes: ["alkaloid", "aa_peptide", "polyphenol"]
+    query_smarts: "[c:1][NX3;H2:2]"
+    smirks: "[c:1][NX3;H2:2]>>[c:1][I]"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "I"
+
+  - name: FG_AMINE_AR__NH2__TO__OH
+    code: FG_AMINE_AR__NH2__TO__OH
+    legacy_rule_id: null
+    label: "Ar-NH2->OH"
+    family: amine_mod
+    scope_classes: ["alkaloid", "aa_peptide", "polyphenol"]
+    query_smarts: "[c:1][NX3;H2:2]"
+    smirks: "[c:1][NX3;H2:2]>>[c:1][OH]"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "O"
+
+  - name: FG_AMINE_AR__NH2__TO__NHMe
+    code: FG_AMINE_AR__NH2__TO__NHMe
+    legacy_rule_id: null
+    label: "Ar-NH2->NHMe"
+    family: amine_mod
+    scope_classes: ["alkaloid", "aa_peptide", "polyphenol"]
+    query_smarts: "[c:1][NX3;H2:2]"
+    smirks: "[c:1][NX3;H2:2]>>[c:1][NH:2]C"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "N"
+
+  - name: FG_AMINE_AR__NH2__TO__NMe2
+    code: FG_AMINE_AR__NH2__TO__NMe2
+    legacy_rule_id: null
+    label: "Ar-NH2->NMe2"
+    family: amine_mod
+    scope_classes: ["alkaloid", "aa_peptide", "polyphenol"]
+    query_smarts: "[c:1][NX3;H2:2]"
+    smirks: "[c:1][NX3;H2:2]>>[c:1]N(C)C"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "N"
+
+  - name: FG_AMINE_AR__NH2__TO__NHCHO
+    code: FG_AMINE_AR__NH2__TO__NHCHO
+    legacy_rule_id: null
+    label: "Ar-NH2->NHCHO"
+    family: amine_mod
+    scope_classes: ["alkaloid", "aa_peptide", "polyphenol"]
+    query_smarts: "[c:1][NX3;H2:2]"
+    smirks: "[c:1][NX3;H2:2]>>[c:1]NC=O"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "N"
+
+  - name: FG_AMINE_AR__NH2__TO__NHAc
+    code: FG_AMINE_AR__NH2__TO__NHAc
+    legacy_rule_id: null
+    label: "Ar-NH2->NHAc"
+    family: amine_mod
+    scope_classes: ["alkaloid", "aa_peptide", "polyphenol"]
+    query_smarts: "[c:1][NX3;H2:2]"
+    smirks: "[c:1][NX3;H2:2]>>[c:1]NC(=O)C"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "N"
+
+  # ---------------------------------------------------------------------------
+  # Aliphatic primary amines (non-amide, non-ring)
+  # ---------------------------------------------------------------------------
+  - name: FG_AMINE_ALIPH__NH2__TO__NHMe
+    code: FG_AMINE_ALIPH__NH2__TO__NHMe
+    legacy_rule_id: null
+    label: "Aliph-NH2->NHMe"
+    family: amine_mod
+    scope_classes: ["alkaloid", "aa_peptide", "terpenoid", "lipid"]
+    query_smarts: "[#6;!$(C=O):1]-[NX3;H2;!$(NC=O);!R:2]"
+    smirks: "[#6:1][NX3;H2:2]>>[#6:1][NH:2]C"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "N"
+
+  - name: FG_AMINE_ALIPH__NH2__TO__NMe2
+    code: FG_AMINE_ALIPH__NH2__TO__NMe2
+    legacy_rule_id: null
+    label: "Aliph-NH2->NMe2"
+    family: amine_mod
+    scope_classes: ["alkaloid", "aa_peptide", "terpenoid", "lipid"]
+    query_smarts: "[#6;!$(C=O):1]-[NX3;H2;!$(NC=O);!R:2]"
+    smirks: "[#6:1][NX3;H2:2]>>[#6:1]N(C)C"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "N"
+
+  - name: FG_AMINE_ALIPH__NH2__TO__NHAc
+    code: FG_AMINE_ALIPH__NH2__TO__NHAc
+    legacy_rule_id: null
+    label: "Aliph-NH2->NHAc"
+    family: amine_mod
+    scope_classes: ["alkaloid", "aa_peptide", "terpenoid", "lipid"]
+    query_smarts: "[#6;!$(C=O):1]-[NX3;H2;!$(NC=O);!R:2]"
+    smirks: "[#6:1][NX3;H2:2]>>[#6:1]NC(=O)C"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "N"
+
+  # ---------------------------------------------------------------------------
+  # Carboxylic acid modifications
+  # ---------------------------------------------------------------------------
+  - name: FG_CARBOXYL__COOH__TO__COOMe
+    code: FG_CARBOXYL__COOH__TO__COOMe
+    legacy_rule_id: null
+    label: "COOH->COOMe"
+    family: carboxyl_mod
+    scope_classes: ["terpenoid", "polyphenol", "lipid", "aa_peptide"]
+    query_smarts: "[CX3:1](=O)[OX2H1:2]"
+    smirks: "[CX3:1](=O)[OX2H1:2]>>[CX3:1](=O)[O:2]C"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "O"
+
+  - name: FG_CARBOXYL__COOH__TO__COOEt
+    code: FG_CARBOXYL__COOH__TO__COOEt
+    legacy_rule_id: null
+    label: "COOH->COOEt"
+    family: carboxyl_mod
+    scope_classes: ["terpenoid", "polyphenol", "lipid", "aa_peptide"]
+    query_smarts: "[CX3:1](=O)[OX2H1:2]"
+    smirks: "[CX3:1](=O)[OX2H1:2]>>[CX3:1](=O)[O:2]CC"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "O"
+
+  - name: FG_CARBOXYL__COOH__TO__COCl
+    code: FG_CARBOXYL__COOH__TO__COCl
+    legacy_rule_id: null
+    label: "COOH->COCl"
+    family: carboxyl_mod
+    scope_classes: ["terpenoid", "polyphenol", "lipid", "aa_peptide"]
+    query_smarts: "[CX3:1](=O)[OX2H1:2]"
+    smirks: "[CX3:1](=O)[OX2H1:2]>>[CX3:1](=O)[Cl]"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "Cl"
+
+  # ---------------------------------------------------------------------------
+  # Halogenation semantic rules (for 08 SMIRKS usage; legacy_rule_id bridges)
+  # ---------------------------------------------------------------------------
+  - name: HALO_ARYL_CH__H__TO__X
+    code: HALO_ARYL_CH__H__TO__X
+    legacy_rule_id: R1
+    label: "Aryl/heteroaryl C–H -> C–X"
+    family: halogenation
+    scope_classes: ["terpenoid", "alkaloid", "polyphenol", "aa_peptide", "glycoside"]
+    query_smarts: "[cH:1]"
+    smirks: "[cH:1]>>[c:1][Cl]"  # placeholder X; downstream can swap halogen
+    highlight_mapnums: [1]
+    product_highlight_symbol: "Cl"
+
+  - name: HALO_RING_SP3__CH__TO__X
+    code: HALO_RING_SP3__CH__TO__X
+    legacy_rule_id: null
+    label: "Ring sp3 CH -> C–X"
+    family: halogenation
+    scope_classes: ["terpenoid", "alkaloid"]
+    query_smarts: "[C;R;H1,H2:1]"
+    smirks: "[C;R;H1,H2:1]>>[C;R:1][Cl]"
+    highlight_mapnums: [1]
+    product_highlight_symbol: "Cl"
+
+  - name: HALO_ALPHA_CARBONYL__CH2__TO__X
+    code: HALO_ALPHA_CARBONYL__CH2__TO__X
+    legacy_rule_id: null
+    label: "Alpha to carbonyl CH2 -> CHX"
+    family: halogenation
+    scope_classes: ["lipid", "terpenoid", "aa_peptide"]
+    query_smarts: "[CH2:1][CX3](=O)"
+    smirks: "[CH2:1][CX3](=O)>>[CH:1]([Cl])[CX3](=O)"
+    highlight_mapnums: [1]
+    product_highlight_symbol: "Cl"
+
+  - name: HALO_PRIMARY_OH__CH2OH__TO__X
+    code: HALO_PRIMARY_OH__CH2OH__TO__X
+    legacy_rule_id: null
+    label: "CH2OH -> CH2X"
+    family: halogenation
+    scope_classes: ["glycoside", "polysaccharide"]
+    query_smarts: "[CH2:1][OX2H:2]"
+    smirks: "[CH2:1][OX2H:2]>>[CH2:1][Cl]"
+    highlight_mapnums: [1]
+    product_highlight_symbol: "Cl"
+
+  - name: HALO_CARBOXYL__COOH__TO__COX
+    code: HALO_CARBOXYL__COOH__TO__COX
+    legacy_rule_id: R5
+    label: "COOH -> COX"
+    family: halogenation
+    scope_classes: ["terpenoid", "polyphenol", "lipid", "aa_peptide"]
+    query_smarts: "[CX3:1](=O)[OX2H1:2]"
+    smirks: "[CX3:1](=O)[OX2H1:2]>>[CX3:1](=O)[Cl]"
+    highlight_mapnums: [2]
+    product_highlight_symbol: "Cl"
